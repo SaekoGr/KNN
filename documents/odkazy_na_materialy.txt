@@ -1,0 +1,9 @@
+Popis FCNs (obsahuje i odkaz na dataset s květinami)
+1. https://towardsdatascience.com/implementing-a-fully-convolutional-network-fcn-in-tensorflow-2-3c46fb61de3b
+
+Studie využití FCN, RMF a RNN do k interaktivní segmentaci pomocí kliků uživatele
+Pozn:
+  V sekci 3.3 je uvedené, že trénování před-trénovaných FCN jim trvalo v rozmezí 3-5 dní s využitím grafiky.
+2. https://arxiv.org/pdf/1603.04042.pdf
+
+
