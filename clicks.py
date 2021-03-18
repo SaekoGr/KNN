@@ -2,6 +2,8 @@ from tkinter import Tk, Canvas
 from PIL import ImageTk, Image
 import json
 import random
+from shapely.geometry import Polygon, Point
+
 
 # Requires annotation file in constructor
 class Clicks():
@@ -22,9 +24,36 @@ class Clicks():
         self.annotations = self.data[img_id]['annotations']
 
 
-    def generate_clicks(self, segment_index):
-        pass
+    def generate_clicks(self, segment_index, num_of_clicks):
+        segmentation = self.annotations[segment_index]['segmentation']
+        
+        xs = [x[::2] for x in segmentation]
+        ys = [x[1::2] for x in segmentation]
+        minx = min([min(x) for x in xs])
+        maxx = max([max(x) for x in xs])
+        miny = min([min(y) for y in ys])
+        maxy = max([max(y) for y in ys])
 
+        points = []
+        polys = []
+        
+        # iterate trought all polygons in current segmentation
+        for segment in segmentation:
+            polys.append(Polygon(list(zip(segment[::2], segment[1::2]))))
+        # poly = Polygon(segmentation[0])
+        
+
+        while len(points) < num_of_clicks:
+            random_point = Point([random.uniform(minx, maxx), random.uniform(miny, maxy)])
+            for poly in polys:
+                if (random_point.within(poly)):
+                    points.append(random_point)
+                    break
+
+        border_min = Point([minx, miny])
+        border_max = Point([maxx, maxy])
+
+        return (border_min, border_max), points
 
 
     def show_all(self):
@@ -57,7 +86,7 @@ class Clicks():
         root.mainloop()
 
 
-    def show(self, segmentation):
+    def show(self, segmentation, border_clicks, pos_clicks):
         # Create root
         root = Tk()
 
@@ -65,6 +94,7 @@ class Clicks():
         canvas = Canvas(width=640, height=360)
         canvas.pack()
 
+        # SHOW IMAGE ----
         # Load the image file
         im = Image.open(self.img_name)
         # Put the image into a canvas compatible class, and stick in an
@@ -73,12 +103,14 @@ class Clicks():
         # Add the image to the canvas, and set the anchor to the top left / north west corner
         canvas.create_image(0, 0, image=canvas.image, anchor='nw')
 
-        # Show segmentation polygon
-        canvas.create_polygon(segmentation, fill='#0000ff', stipple="gray50", outline='')
+        # RENDER CLICKS AND SEGMENTATION ----
+
         # Show segmentation borders
-        xs = segmentation[::2]
-        ys = segmentation[1::2]
-        canvas.create_rectangle(min(xs), min(ys), max(xs), max(ys), width='3', outline='#0000ff')
+        canvas.create_rectangle(border_clicks[0].x, border_clicks[0].y, border_clicks[1].x, border_clicks[1].y, width='3', outline='#0000ff')
+
+        # Show positive clicks
+        for click in pos_clicks:
+            canvas.create_oval(click.x - 3, click.y - 3, click.x + 3, click.y + 3, outline='#000000', fill='#ff0000')
 
         root.mainloop()
 
@@ -86,5 +118,6 @@ class Clicks():
 
 test_clicks = Clicks('../part1/test_anotation.json')
 test_clicks.set_img('391895')
-test_clicks.show([20, 20, 300, 20, 300, 300])
+border_clicks, pos_clicks = test_clicks.generate_clicks(0, 3)
+test_clicks.show([20, 20, 300, 20, 300, 300], border_clicks, pos_clicks)
 
