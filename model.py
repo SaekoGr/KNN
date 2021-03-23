@@ -11,6 +11,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.DL = DataLoader()
         self.pool = nn.MaxPool2d(2, 2)
+        self.refinements = []
 
         # Basic downsampling
         self.conv1 = nn.Conv2d(5, 16, 3, padding=1)
@@ -96,8 +97,17 @@ class Model(nn.Module):
         return y
 
 
-    def add_refinement_map(x):
-        ...
+    def add_refinement_map(self, img, x):
+        """Funtion for adding additional positive clicks by user
+        Funtion will store x into model and trigger foward funtion, which then returns updated segmentation image
+
+        Args:
+        -----
+            img (img): original image (including bounding box & 1 positive click feature maps)
+            x (additional feature map): same size feature map of another positive click
+        """
+        self.refinements.append(x)
+        return self.forward(img)
 
     def load_model(self, filename):
         pass
