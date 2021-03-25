@@ -1,29 +1,67 @@
 from tkinter import Tk, Canvas
 from PIL import ImageTk, Image
+import torch
 import json
 import random
 from shapely.geometry import Polygon, Point
 
+#######################################################################
+# USAGE
+#######################################################################
+# 1. create instance of class Clicks
+# 2. Set image to work with by set_img(data, img_id), where:
+#       data - loaded annotation file
+#       img_id - id from annotation file
+# 3. Use get_maps(segment_index, num_of_clicks), where:
+#       segment_index - index in annotation file/annotations/segmentation 
+#           - which segment to generate from 
+#       num_of_clicks - count of clicks to be generated
+#       RETURNS:
+#       b_map, c_map - border map, clicks map
+#######################################################################
 
-# Requires annotation file in constructor
+
 class Clicks():
-    img_id = ''
     img_name = ''
-    annotation_file = ''
+    img_width = 0
+    img_height = 0
     annotations = []
-    data = []
-
-    def __init__(self, annotation_file):
-        with open(annotation_file) as json_file:
-            self.data = json.load(json_file)
 
 
-    def set_img(self, img_id):
+    def set_img(self, data, img_id):
         # TODO - opravit "part1" na skutocnu cestu k obrazkom
-        self.img_name = '../part1/' + self.data[img_id]['file_name']
-        self.annotations = self.data[img_id]['annotations']
+        self.img_name = '../part1/' + data[img_id]['file_name']
+        self.img_width = data[img_id]['width']
+        self.img_height = data[img_id]['height']
+        self.annotations = data[img_id]['annotations']
 
 
+    # Creates maps from received points
+    def create_maps(self, borders, pos_clicks):
+        b1x = int(borders[0].x)
+        b2x = int(borders[1].x)
+        b1y = int(borders[0].y)
+        b2y = int(borders[1].y)
+        
+        # create full borders - not only edges of 1
+        borders_map = torch.zeros((self.img_height, self.img_width), dtype=int)
+        # top border
+        borders_map[b1y, b1x:b2x+1:] = 1
+        # bottom border
+        borders_map[b2y, b1x:b2x+1:] = 1
+        # left border
+        borders_map[b1y:b2y+1:, b1x] = 1
+        # right border
+        borders_map[b1y:b2y+1:, b2x] = 1
+
+        pos_clicks_map = torch.zeros((self.img_height, self.img_width), dtype=int)
+        for point in pos_clicks:
+            pos_clicks_map[int(point.y)][int(point.x)] = 1
+        
+        
+        return borders_map, pos_clicks_map
+
+    # Needs segment index - from which object to generate
     def generate_clicks(self, segment_index, num_of_clicks):
         segmentation = self.annotations[segment_index]['segmentation']
         
@@ -56,12 +94,23 @@ class Clicks():
         return (border_min, border_max), points
 
 
+    # Generates points and creates maps according to it
+    def get_maps(self, segment_index, num_of_clicks):
+        # border points, click points
+        b_points, c_points = self.generate_clicks(segment_index, num_of_clicks)
+        # border map, click map
+        b_map, c_map = self.create_maps(b_points, c_points)
+
+        return b_map, c_map
+
+
+    # Render image and ground truth
     def show_all(self):
         # Create root
         root = Tk()
 
         # Create a canvas
-        canvas = Canvas(width=640, height=360)
+        canvas = Canvas(width=self.img_width, height=self.img_height)
         canvas.pack()
 
         # Load the image file
@@ -86,12 +135,13 @@ class Clicks():
         root.mainloop()
 
 
-    def show(self, segmentation, border_clicks, pos_clicks):
+    # Render image, chosen segment and generated clicks
+    def show(self, border_clicks, pos_clicks):
         # Create root
         root = Tk()
 
         # Create a canvas
-        canvas = Canvas(width=640, height=360)
+        canvas = Canvas(width=self.img_width, height=self.img_height)
         canvas.pack()
 
         # SHOW IMAGE ----
@@ -115,9 +165,46 @@ class Clicks():
         root.mainloop()
 
 
+    # Render maps - black "0" pixels, while "1" pixels
+    def show_maps(self, b_map, c_map):
+        # Create root
+        root = Tk()
 
-test_clicks = Clicks('../part1/test_anotation.json')
-test_clicks.set_img('391895')
-border_clicks, pos_clicks = test_clicks.generate_clicks(0, 3)
-test_clicks.show([20, 20, 300, 20, 300, 300], border_clicks, pos_clicks)
+        # Create a canvas
+        canvas = Canvas(width=self.img_width, height=self.img_height, background='#000000')
+        canvas.pack()
+
+        for x in range(self.img_width-1):
+            for y in range(self.img_height-1):
+                if b_map[y][x] == 1 or c_map[y][x] == 1:
+                    canvas.create_rectangle(x,y,x,y, fill='#ffffff', outline='')
+
+
+        root.mainloop()
+
+
+# ----------------------------------------------------------------
+# JUST FOR TESTING -----------------------------------------------
+# # loads annotation file
+# def open_annotation(annotation_file):
+#     with open(annotation_file) as json_file:
+#             data = json.load(json_file)
+
+#     return data
+
+
+# # prepares annotation into local variable
+# data = open_annotation('../part1/test_anotation.json')
+
+# # init of class Clicks
+# test_clicks = Clicks()
+# # sets testing image
+# test_clicks.set_img(data, '391895')
+# # generates 3 clicks from 0th object in list
+# border_clicks, pos_clicks = test_clicks.generate_clicks(0, 3)
+# b_map, c_map = test_clicks.get_maps(0, 3)
+
+# x, y = test_clicks.create_maps(border_clicks, pos_clicks)
+
+# test_clicks.show_maps(b_map, c_map)
 
