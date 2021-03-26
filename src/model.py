@@ -1,15 +1,14 @@
 #!/usr/bin/env python
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from copy import deepcopy
-import DataLoader
+# import DataLoader
 
-class Model(nn.Module):
+class PSPnet(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
-        self.DL = DataLoader()
+        super(PSPnet, self).__init__()
+        # self.DL = DataLoader()
         self.pool = nn.MaxPool2d(2, 2)
         self.refinements = []
 
