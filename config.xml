@@ -1,4 +1,3 @@
-
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
     <train>0.6</train>
@@ -9,10 +8,4 @@
     <trainData>./part2/imgs</trainData>
     <trainLabel>./part1/part1_annotation.json</trainLabel>
     <trainLabel>./part2/part2_annotation.json</trainLabel>
-<?xml version="1.0" encoding="UTF-8"?>
-<config>
-    <train>0.6</train>
-    <eval>0.2</eval>
-    <test>0.2</test>
-    <samplingRate>10</samplingRate>
 </config>
