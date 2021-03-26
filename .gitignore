@@ -2,3 +2,5 @@ stuff_annotations_trainval2017.zip
 stuff_annotations_trainval2017/*
 train2017/*
 train2017.zip
+test.py
+test-photo.*

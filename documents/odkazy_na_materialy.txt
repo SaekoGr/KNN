@@ -7,3 +7,11 @@ Pozn:
 2. https://arxiv.org/pdf/1603.04042.pdf
 
 
+PSP net (mělo by se jednat o zlepšení ooproti FCN)
+3. https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8100143
+
+Structure-Aware Residual Pyramid Network (Z této sítě PSP vychází)
+4. https://arxiv.org/pdf/1907.06023v1.pdf
+
+Multi-scale Features Fusion (Zvětšování obrázků s menší ujmou na kvalitě. Je potřeba při upsamplingu)
+5. https://openaccess.thecvf.com/content_ECCV_2018/papers/Juncheng_Li_Multi-scale_Residual_Network_ECCV_2018_paper.pdf

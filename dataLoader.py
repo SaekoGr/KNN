@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #!/usr/bin/env python
 import xml.etree.ElementTree as ET
 import xmlschema
@@ -40,3 +41,29 @@ class DataLoader:
     def batchProvider(self, batchSize=2):
         for i in range(0, len(self.train_x), batchSize):
             return [(cv2.imread(img),self.getFilenameAnnotation(img.rsplit('/',1)[-1])) for img in self.train_x[i:i+batchSize]]
+=======
+#!/usr/bin/env python
+import xml.etree.ElementTree as ET
+import xmlschema
+
+class DataLoader:
+    def __init__(self):
+        pass
+
+    def config(self, configFile='config.xml', validatorFile='config.xsd'):
+        # uncomment for final product
+        xmlschema.validate(configFile, validatorFile)
+
+        xmlTree = ET.parse(configFile)
+        self.configRoot = xmlTree.getroot()
+
+
+    def getConfigVal(self, valName):
+        return self.configRoot.find(valName).text
+
+    def laodDataset(self):
+        pass
+
+    def batchProvider(self):
+        pass
+>>>>>>> 5dc3dc99e8a655fac6bc96d205689c439c977e03
