@@ -37,11 +37,11 @@ def generate_y(x, segmentation):
 			# y = parse_run_encoding(y, segment["counts"])
 			break
 		else:
-			print(polygon)
-			print("num of segments {}".format(len(segmentation)))
 			draw.polygon(polygon, outline="white", fill="white")
 	
-	return y
+	print("x size = {}".format(x.size))
+	print("y size = {}".format(y.size))
+	return y.convert('LA')
 
 
 
@@ -93,7 +93,7 @@ def batch_generator(batch_size, isTrain=True):
 				continue
 
 			width.append(img_obj["width"])
-			height.append(img_obj["width"])
+			height.append(img_obj["height"])
 
 			
 				# Load image
@@ -113,22 +113,21 @@ def batch_generator(batch_size, isTrain=True):
 					old_size = x.size
 					# Create 2 copies of blank black image
 					resized_x = Image.new("RGB", new_size)
-					resized_y = Image.new("RGB", new_size)
+					resized_y = Image.new("LA", new_size)
 
 					# insert original image inside the new one
 					resized_x.paste(x, ((new_size[0]-old_size[0])//2, (new_size[1]-old_size[1])//2))
 					resized_y.paste(y, ((new_size[0]-old_size[0])//2, (new_size[1]-old_size[1])//2))
 
-					resized_x.show()
-					resized_y.show()
-					print(old_size)
-					print(img_obj["category_id"])
-					print(img_obj["image_id"])
-
-					input()
-					for proc in psutil.process_iter():
-						if proc.name() == "display":
-							proc.kill()
+					# resized_x.show()
+					# resized_y.show()
+					# print(old_size)
+					# print(img_obj["category_id"])
+					# print(img_obj["image_id"])
+					# input()
+					# for proc in psutil.process_iter():
+					# 	if proc.name() == "display":
+					# 		proc.kill()
 
 					x_batch[i] = trans(resized_x)
 					y_batch[i] = trans(resized_y)
