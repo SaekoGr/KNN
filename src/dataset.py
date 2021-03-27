@@ -26,9 +26,12 @@ def parse_run_encoding(img, coding):
 
 
 def generate_y(x, segmentation):
-	y = Image.fromarray(np.zeros((x.size), dtype="uint8"))
+	# y = Image.fromarray(np.zeros((x.size), dtype="uint8"))
+	y = Image.new("RGB", x.size)
+
 
 	draw = ImageDraw.Draw(y)
+	# draw_test = ImageDraw.Draw(test)
 	for polygon in segmentation:
 		if type(polygon) == str:
 			# y = parse_run_encoding(y, segment["counts"])
@@ -110,7 +113,7 @@ def batch_generator(batch_size, isTrain=True):
 					old_size = x.size
 					# Create 2 copies of blank black image
 					resized_x = Image.new("RGB", new_size)
-					resized_y = deepcopy(resized_x)
+					resized_y = Image.new("RGB", new_size)
 
 					# insert original image inside the new one
 					resized_x.paste(x, ((new_size[0]-old_size[0])//2, (new_size[1]-old_size[1])//2))
