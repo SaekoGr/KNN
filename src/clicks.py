@@ -19,7 +19,7 @@ def generate_clicks(siluet, bbox):
         if siluet[0][random_y][random_x] == 1:
             # check distance between points - at least 10px
             for point in clicks_points:
-                if abs(point[0] - random_x) < 10 or abs(point[1] - random_y) < 10:
+                if abs(point[0] - random_x) < 10 and abs(point[1] - random_y) < 10:
                     valid_point = False
                     break
             if valid_point:    
