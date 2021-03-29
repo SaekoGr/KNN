@@ -7,34 +7,50 @@ import matplotlib.pyplot as plt
 
 
 def generate_clicks(siluet, bbox):
+    print(bbox)
+    print(siluet.shape)
     clicks_num = 5
-
+    clicks_points = []
     click_map = torch.zeros_like(siluet)
     # generate clicks with MonteCarlo method
     while clicks_num > 0:
-        random_x = int(random.uniform(bbox[0], bbox[2]))
-        random_y = int(random.uniform(bbox[1], bbox[3]))
+        valid_point = True
+        random_x = random.randint(int(bbox[0]), int(bbox[2])-1)
+        random_y = random.randint(int(bbox[1]), int(bbox[3])-1)
 
         if siluet[0][random_y][random_x] == 1:
-            click_map[random_y][random_x] = 1
-            clicks_num -= 1
+            # check distance between points - at least 10px
+            for point in clicks_points:
+                if abs(point[0] - random_x) < 10 or abs(point[1] - random_y) < 10:
+                    valid_point = False
+                    break
+            if valid_point:    
+                click_map[0][random_y][random_x] = 1
+                clicks_num -= 1
     
     return click_map
 
 
 def generate_b_map(siluet, bbox):
     border_map = torch.zeros_like(siluet)
+    
+    bx1, by1, bx2, by2 = bbox
 
-    x1, y1, x2, y2 = bbox
+    # add noise
+    n1, n2, n3, n4 = [random.randint(0, 20) for x in range(4)]
+    x1 = int(bx1 - n1 if bx1 - n1 > 0 else 0)
+    y1 = int(by1 - n2 if by1 - n2 > 0 else 0)
+    x2 = int(bx2 + n3 if bx2 + n3 < siluet.shape[2] else siluet.shape[2]-1)
+    y2 = int(by2 + n4 if by2 + n4 < siluet.shape[1] else siluet.shape[1]-1) 
 
     # top
-    border_map[y1, x1:y2+1:] = 1
+    border_map[0, y1, x1:x2+1:] = 1
     # bottom
-    border_map[y2, x1:y2+1:] = 1
+    border_map[0, y2, x1:x2+1:] = 1
     # left
-    border_map[y1:y2+1:, x1] = 1
+    border_map[0, y1:y2+1:, x1] = 1
     # right
-    border_map[y1:y2+1, x2] = 1
+    border_map[0, y1:y2+1, x2] = 1
 
     return border_map
 
@@ -53,5 +69,4 @@ def get_maps(x_batch, y_batch, bboxes):
     click_maps = torch.stack(click_maps)
     b_maps = torch.stack(b_maps)
 
-    # TODO opravit spojenie do jedneho tenzoru
-    return x_batch.cat((click_maps, b_maps), 1)
+    return torch.hstack((x_batch, b_maps, click_maps))
