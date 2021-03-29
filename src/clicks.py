@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 
 
 def generate_clicks(siluet, bbox):
-    print(bbox)
-    print(siluet.shape)
     clicks_num = 5
     clicks_points = []
     click_map = torch.zeros_like(siluet)
