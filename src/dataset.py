@@ -5,6 +5,7 @@ from torchvision import transforms
 import numpy as np
 from PIL import Image, ImageDraw
 import psutil
+from copy import deepcopy
 
 trans = transforms.ToTensor()
 transI = transforms.ToPILImage()
@@ -44,13 +45,13 @@ def generate_y(x, segmentation):
 def get_crop_res(bboxes, width, height, max_margin=20):
 	l_width = min([x[0] for x in bboxes])
 	l_height = min([x[1] for x in bboxes])
-	r_width = min([abs(box[0] + box[2] - w) for w, box in zip(width, bboxes)])
-	r_height = min([abs(box[1] + box[3] - h) for h, box in zip(height, bboxes)])
+	r_width = min([w - (box[0] + box[2]) for w, box in zip(width, bboxes)])
+	r_height = min([h - (box[1] + box[3]) for h, box in zip(height, bboxes)])
 
 	# width = max(width)
 	# height = max(height)
 	width = max([box[2] for box in bboxes])
-	height = max([box[2] for box in bboxes])
+	height = max([box[3] for box in bboxes])
 
 
 	max_width_margin = min(l_width, r_width)
@@ -130,7 +131,7 @@ def batch_generator(batch_size, isTrain=True):
 					# print(x.size)
 					# print(crop_window_size, width_margin, height_margin)
 					# print(b)
-					x.show()
+					# x.show()
 					w_l = b[0]-width_margin
 					h_t = b[1]-height_margin
 					crop_window = (w_l, h_t, w_l + crop_window_size[0], h_t + crop_window_size[1])
@@ -147,6 +148,9 @@ def batch_generator(batch_size, isTrain=True):
 
 					# Holds information about where is cropped object and it's bounding box
 					new_bbox = (width_margin, height_margin, width_margin + b[2], height_margin + b[3])
+					print(x.size)
+					# print(b)
+					print(new_bbox)
 					new_bboxes.append(new_bbox)
 
 					# draw_x = ImageDraw.Draw(x)
@@ -173,15 +177,18 @@ def batch_generator(batch_size, isTrain=True):
 				bboxes = []
 
 				
-
+from time import perf_counter
 if __name__ == "__main__":
 	batch_size = 4
 	gen = batch_generator(batch_size, False)
 	l = next(gen)
 	print(l)
 	for X, y in gen:
-		print(X.shape)
+		# print(X.shape)
 		input()
+
+
+
 
 
 	# annotation_file = "annotation.json"
