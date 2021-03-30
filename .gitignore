@@ -4,5 +4,6 @@ train2017/*
 train2017.zip
 test.py
 test2.py
+test3.py
 test-photo.*
 data/

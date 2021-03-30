@@ -6,6 +6,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 import psutil
 from clicks import get_maps
+from math import ceil
+
 
 trans = transforms.ToTensor()
 transI = transforms.ToPILImage()
@@ -89,8 +91,9 @@ def batch_generator(batch_size, isTrain=True):
 			if type(img_obj["segmentation"]) == dict:
 				continue
 
-			w = img_obj["bbox"][2] // 100
-			h = img_obj["bbox"][3] // 100
+			# Get nearest bigger power of 2 of width and height
+			w = pow(2, ceil(np.log(img_obj["bbox"][2])/np.log(2)))
+			h = pow(2, ceil(np.log(img_obj["bbox"][3])/np.log(2)))
 
 			if (w,h) not in batch_pool:
 				batch_pool[(w,h)] = [img_obj]
@@ -98,68 +101,80 @@ def batch_generator(batch_size, isTrain=True):
 				batch_pool[(w,h)].append(img_obj)
 			
 			if len(batch_pool[(w,h)]) == batch_size:
-				width = round(max(x["bbox"][2] for x in batch_pool[(w,h)]))
-				height = round(max(x["bbox"][3] for x in batch_pool[(w,h)]))
+				# width = round(max(x["bbox"][2] for x in batch_pool[(w,h)]))
+				# height = round(max(x["bbox"][3] for x in batch_pool[(w,h)]))
 
-				# Width and height must be even size
-				width = width if width % 2 == 0 else width + 1
-				height = height if height % 2 == 0 else height + 1
-				margin = 20
-				new_size = (width + 2*margin, height + 2*margin)
+				resize_width = pow(2, ceil(np.log(batch_pool[(w,h)][0]["bbox"][2])/np.log(2)))
+				resize_height = pow(2, ceil(np.log(batch_pool[(w,h)][0]["bbox"][3])/np.log(2)))
+
+				new_size = (resize_width, resize_height)
 
 				for j, img_obj in enumerate(batch_pool[(w,h)]):
 					bbox = img_obj["bbox"]
 					x = Image.open(os.path.join(folder, img_obj["file_name"])).convert("RGB")
-					segmentation = [[round(x) for l, x in enumerate(polygon)] for polygon in img_obj["segmentation"]]
+					# segmentation = [[round(x) for x in polygon] for polygon in img_obj["segmentation"]]
+					segmentation = [list(np.round(polygon)) for polygon in img_obj["segmentation"]]
 					y = generate_y(x, segmentation)
 
-					# Get available margins from image bounding box
-					img_right_margin = (img_obj["width"] - (bbox[0] + bbox[2]))
-					img_bottom_margin = (img_obj["height"] - (bbox[1] + bbox[3]))
-					l_w = bbox[0] if bbox[0] < margin else margin
-					r_w = img_right_margin if img_right_margin < margin else margin
-					t_h = bbox[1] if bbox[1] < margin else margin
-					b_h = img_bottom_margin if img_bottom_margin < margin else margin
+					# Calculate how much padding will be needed from bouding box
+					x_padding = round((resize_width - round(bbox[2])) // 2)
+					x_padding = x_padding if x_padding % 2 == 0 else x_padding - 1
+					y_padding = round((resize_height - round(bbox[3])) // 2)
+					y_padding = y_padding if y_padding % 2 == 0 else y_padding - 1 
+
+					# Get available paddings from image bounding box
+					# And set paddings from from bounding box in image
+					img_max_right_margin = (img_obj["width"] - (bbox[0] + bbox[2]))
+					img_max_bottom_margin = (img_obj["height"] - (bbox[1] + bbox[3]))
+					l_p = bbox[0] if bbox[0] < x_padding else x_padding
+					r_p = img_max_right_margin if img_max_right_margin < x_padding else x_padding
+					t_p = bbox[1] if bbox[1] < y_padding else y_padding
+					b_p = img_max_bottom_margin if img_max_bottom_margin < y_padding else y_padding
 
 					# Get coordinates for cropping window
-					crop_w_start = bbox[0] - l_w
-					crop_h_start = bbox[1] - t_h
-					crop_w_end = bbox[0] + bbox[2] + r_w
-					crop_h_end = bbox[1] + bbox[3] + b_h
-					x = x.crop((crop_w_start, crop_h_start, crop_w_end, crop_h_end))
-					y = y.crop((crop_w_start, crop_h_start, crop_w_end, crop_h_end))
+					# And crop x,y images
+					crop_coords = (bbox[0] - l_p, bbox[1] - t_p, bbox[0] + bbox[2] + r_p, bbox[1] + bbox[3] + b_p)
+					# print("crop_coords = ", crop_coords)
+					x = x.crop(crop_coords)
+					y = y.crop(crop_coords)
 					old_size = x.size
 
-					# Normalize polygons in segmentation to bounding box
-					# segmentation = [[round(x-bbox[0] + l_w) if l%2==0 else round(x-bbox[1] + t_h) for l, x in enumerate(polygon)] for polygon in img_obj["segmentation"]]
-					# y = generate_y(x, segmentation)
+					# print("old_size = ", old_size)
+					# print("new_size = ", new_size)
 
-					x_padding = (width + 2*margin - old_size[0]) // 2
-					y_padding = (height + 2*margin - old_size[1]) // 2
+					if old_size != new_size:
+						# For images with insufficent padding reserve
+						# Generate blank (black) image and insert cropped image in the middle
+						w_m = round((new_size[0]-old_size[0])//2)
+						h_m = round((new_size[1]-old_size[1])//2)
+						resized_x = Image.new("RGB", new_size)
+						resized_x.paste(x, (w_m, h_m))
 
-					# Create new blank image and paste cropped image onto it
-					resized_x = Image.new("RGB", (width + 2*margin, height + 2*margin))
-					resized_x.paste(x, ((new_size[0]-old_size[0])//2, (new_size[1]-old_size[1])//2))
+						resized_y = Image.new("L", new_size)
+						resized_y.paste(y, (w_m, h_m))
+					else:
+						w_m, h_m = 0, 0
+						resized_x = x
+						resized_y = y
 
-					resized_y = Image.new("L", (width + 2*margin, height + 2*margin))
-					resized_y.paste(y, ((new_size[0]-old_size[0])//2, (new_size[1]-old_size[1])//2))
 
-					# print("category = {}".format(img_obj["category_id"]))
-					# print("id = {}".format(img_obj["file_name"]))
-					# print(l_w, r_w)
-					# print(t_h, b_h)
-
-					new_bbox = (x_padding + l_w, y_padding + t_h, new_size[0]-x_padding-r_w, new_size[1]-y_padding-b_h)
+					# print(f"w_m = {w_m}, h_m = {h_m}")
+					# print(f"l_p = {l_p}, r_p = {r_p}")
+					# print(f"t_p = {t_p}, b_p = {b_p}")
+					new_bbox = (w_m + l_p, h_m + t_p, w_m + l_p + bbox[2], h_m + t_p + bbox[3])
+					# print("old bbox = ", bbox)
+					# print("new bbox = ", new_bbox)
 					new_bboxes.append(new_bbox)
 
 					
 
 					# Help "print"
 					# draw_x = ImageDraw.Draw(resized_x)
-					# draw_x.rectangle((x_padding + l_w, y_padding + t_h, new_size[0]-x_padding-r_w, new_size[1]-y_padding-b_h), outline="red")
+					# draw_x.rectangle(new_bbox, outline="red")
 					# resized_x.show()
 					# resized_y.show()
 					# print(img_obj["file_name"])
+					# print("category = ", img_obj["category_id"])
 					# input()
 					# for proc in psutil.process_iter():
 					# 	if proc.name() == "display":
@@ -192,13 +207,13 @@ if __name__ == "__main__":
 	# 	print(X.shape)
 	# 	input()
 	
-	# from time import perf_counter
-	# s = perf_counter()
-	# for i in range(l):
-	# 	_, _ = next(gen)
-	# 	loading(i+1, l)
+	from time import perf_counter
+	s = perf_counter()
+	for i in range(l):
+		_, _ = next(gen)
+		loading(i+1, l)
 	
-	# print("Total time of run is: ", perf_counter() - s)
+	print("Total time of run is: ", perf_counter() - s)
 
 
 
