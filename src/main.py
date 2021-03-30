@@ -1,18 +1,23 @@
-from dataset import batch_generator
+from dataset import batch_generator, loading
 from model import PSPnet
-
+from time import perf_counter
+from gc import collect
 
 m = PSPnet()
-g = batch_generator(32, False)
+g = batch_generator(64, 16, False)
 batch_n = next(g)
 print(batch_n)
 
+s = perf_counter()
+for n in range(batch_n):
+	X, _ = next(g)
+	_ = m(X)
+	del X
+	loading(n+1, batch_n)
+	collect()
 
-X, y = next(g)
-print(X.shape)
+print("total time = ", perf_counter() - s)
 
-y_pred = m(X)
-
-print(y_pred.shape)
+# print(y_pred.shape)
 print("DONE!")
 

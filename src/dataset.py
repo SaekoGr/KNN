@@ -44,7 +44,7 @@ def generate_y(x, segmentation):
 	
 	return y
 
-def batch_generator(batch_size, isTrain=True):
+def batch_generator(batch_size, min_res_size, isTrain=True):
 	"""Batch generator for training&testing data.
 	if type == train, then generator needs both parts in one folder.
 	Path to folder and other detail can be modified in body of function
@@ -85,15 +85,18 @@ def batch_generator(batch_size, isTrain=True):
 	new_bboxes = []
 	while True:
 		shuffle(annotation)
-		for i, img_obj in enumerate(annotation):
+		for img_obj in annotation:
 
-			#! Skipping run encoding
-			if type(img_obj["segmentation"]) == dict:
+			#! Skipping run encoding and microscopic objects
+			if type(img_obj["segmentation"]) == dict or img_obj["area"] < 10:
 				continue
 
 			# Get nearest bigger power of 2 of width and height
 			w = pow(2, ceil(np.log(img_obj["bbox"][2])/np.log(2)))
 			h = pow(2, ceil(np.log(img_obj["bbox"][3])/np.log(2)))
+
+			w = w if w > min_res_size else min_res_size
+			h = h if h > min_res_size else min_res_size
 
 			if (w,h) not in batch_pool:
 				batch_pool[(w,h)] = [img_obj]
@@ -101,15 +104,9 @@ def batch_generator(batch_size, isTrain=True):
 				batch_pool[(w,h)].append(img_obj)
 			
 			if len(batch_pool[(w,h)]) == batch_size:
-				# width = round(max(x["bbox"][2] for x in batch_pool[(w,h)]))
-				# height = round(max(x["bbox"][3] for x in batch_pool[(w,h)]))
+				new_size = (w, h)
 
-				resize_width = pow(2, ceil(np.log(batch_pool[(w,h)][0]["bbox"][2])/np.log(2)))
-				resize_height = pow(2, ceil(np.log(batch_pool[(w,h)][0]["bbox"][3])/np.log(2)))
-
-				new_size = (resize_width, resize_height)
-
-				for j, img_obj in enumerate(batch_pool[(w,h)]):
+				for img_obj in batch_pool[(w,h)]:
 					bbox = img_obj["bbox"]
 					x = Image.open(os.path.join(folder, img_obj["file_name"])).convert("RGB")
 					# segmentation = [[round(x) for x in polygon] for polygon in img_obj["segmentation"]]
@@ -117,9 +114,9 @@ def batch_generator(batch_size, isTrain=True):
 					y = generate_y(x, segmentation)
 
 					# Calculate how much padding will be needed from bouding box
-					x_padding = round((resize_width - round(bbox[2])) // 2)
+					x_padding = round((w - round(bbox[2])) // 2)
 					x_padding = x_padding if x_padding % 2 == 0 else x_padding - 1
-					y_padding = round((resize_height - round(bbox[3])) // 2)
+					y_padding = round((h - round(bbox[3])) // 2)
 					y_padding = y_padding if y_padding % 2 == 0 else y_padding - 1 
 
 					# Get available paddings from image bounding box
@@ -161,9 +158,10 @@ def batch_generator(batch_size, isTrain=True):
 					# print(f"w_m = {w_m}, h_m = {h_m}")
 					# print(f"l_p = {l_p}, r_p = {r_p}")
 					# print(f"t_p = {t_p}, b_p = {b_p}")
-					new_bbox = (w_m + l_p, h_m + t_p, w_m + l_p + bbox[2], h_m + t_p + bbox[3])
 					# print("old bbox = ", bbox)
 					# print("new bbox = ", new_bbox)
+
+					new_bbox = tuple(np.round((w_m + l_p, h_m + t_p, w_m + l_p + bbox[2], h_m + t_p + bbox[3])))
 					new_bboxes.append(new_bbox)
 
 					
@@ -200,9 +198,10 @@ def loading(i, margin):
 		
 if __name__ == "__main__":
 	batch_size = 64
-	gen = batch_generator(batch_size, False)
+	min_res_size = 16
+	gen = batch_generator(batch_size, min_res_size, False)
 	l = next(gen)
-	print(l)
+	# print(l)
 	# for X, y in gen:
 	# 	print(X.shape)
 	# 	input()
