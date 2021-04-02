@@ -13,19 +13,12 @@ def generate_clicks(siluet, bbox):
     other_clicks = torch.zeros(4, siluet.shape[1], siluet.shape[2])
     # generate clicks with MonteCarlo method
     while clicks_num > 0:
-        valid_point = True
         random_x = random.randint(int(bbox[0]), int(bbox[2])-1)
         random_y = random.randint(int(bbox[1]), int(bbox[3])-1)
 
-        if siluet[0][random_y][random_x] == 1:
-            # check distance between points - at least 10px
-            for point in clicks_points:
-                if abs(point.x - random_x) < 10 and abs(point.y - random_y) < 10:
-                    valid_point = False
-                    break
-            if valid_point:  
-                clicks_points.append(Point(random_x, random_y))  
-                clicks_num -= 1
+        if siluet[0][random_y][random_x] == 1:            
+            clicks_points.append(Point(random_x, random_y))  
+            clicks_num -= 1
     
     # first click
     click_map[0][int(clicks_points[0].y)][int(clicks_points[0].x)] = 1
