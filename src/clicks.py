@@ -10,6 +10,7 @@ def generate_clicks(siluet, bbox):
     clicks_num = 5
     clicks_points = []
     click_map = torch.zeros_like(siluet)
+    other_clicks = torch.zeros(4, siluet.shape[1], siluet.shape[2])
     # generate clicks with MonteCarlo method
     while clicks_num > 0:
         valid_point = True
@@ -19,14 +20,22 @@ def generate_clicks(siluet, bbox):
         if siluet[0][random_y][random_x] == 1:
             # check distance between points - at least 10px
             for point in clicks_points:
-                if abs(point[0] - random_x) < 10 and abs(point[1] - random_y) < 10:
+                if abs(point.x - random_x) < 10 and abs(point.y - random_y) < 10:
                     valid_point = False
                     break
-            if valid_point:    
-                click_map[0][random_y][random_x] = 1
+            if valid_point:  
+                clicks_points.append(Point(random_x, random_y))  
                 clicks_num -= 1
     
-    return click_map
+    # first click
+    click_map[0][int(clicks_points[0].y)][int(clicks_points[0].x)] = 1
+    del clicks_points[0]
+
+    # other clicks
+    for i, point in enumerate(clicks_points):
+        other_clicks[i][int(point.y)][int(point.x)] = 1
+
+    return click_map, other_clicks
 
 
 def generate_b_map(siluet, bbox):
@@ -54,12 +63,16 @@ def generate_b_map(siluet, bbox):
 
 
 def get_maps(x_batch, y_batch, bboxes):
+    other_clicks_maps = []
     click_maps = []
     b_maps = []
 
     for i, siluet in enumerate(y_batch):
         # CLICKS
-        click_maps.append(generate_clicks(siluet, bboxes[i]))
+        first_click, other_clicks = generate_clicks(siluet, bboxes[i])
+
+        click_maps.append(first_click)
+        other_clicks_maps.append(other_clicks)
 
         # BORDERS
         b_maps.append(generate_b_map(siluet, bboxes[i]))
@@ -67,4 +80,4 @@ def get_maps(x_batch, y_batch, bboxes):
     click_maps = torch.stack(click_maps)
     b_maps = torch.stack(b_maps)
 
-    return torch.hstack((x_batch, b_maps, click_maps))
+    return torch.hstack((x_batch, b_maps, click_maps)), torch.stack(other_clicks_maps)
