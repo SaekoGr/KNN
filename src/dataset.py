@@ -88,7 +88,7 @@ def batch_generator(batch_size, min_res_size, isTrain=True):
 		for img_obj in annotation:
 
 			#! Skipping run encoding and microscopic objects
-			if type(img_obj["segmentation"]) == dict or img_obj["area"] < 10:
+			if type(img_obj["segmentation"]) == dict or img_obj["area"] < 20:
 				continue
 
 			# Get nearest bigger power of 2 of width and height
@@ -184,7 +184,7 @@ def batch_generator(batch_size, min_res_size, isTrain=True):
 				
 				x_batch = torch.stack(x_batch)
 				y_batch = torch.stack(y_batch)
-				x_batch = get_maps(x_batch, y_batch, new_bboxes)
+				x_batch, _ = get_maps(x_batch, y_batch, new_bboxes)
 				yield x_batch, y_batch
 				del batch_pool[(w,h)]
 				x_batch, y_batch = [], []
