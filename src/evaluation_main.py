@@ -11,6 +11,8 @@ class EvaluationMetrics:
         self.pixel_total_sum = 0
         self.pixel_acc_err = 0
         self.iou = []
+        self.dice_coeff = []
+        self.dice_loss = []
 
     def evaluateBatch(self, groundTruth, prediction, groundBbox, predictionBbox):
         #print("Evaluated model by Pixel accuracy")
@@ -36,10 +38,18 @@ class EvaluationMetrics:
         intersectionArea = abs(x6 - x5) * abs(y6 - y5)
         unionArea =  area1 + area2 - intersectionArea
         iou = intersectionArea / unionArea
+
+        dice_coefficient = (2*intersectionArea) / (unionArea + intersectionArea)
+        self.dice_coeff.append(dice_coefficient)
+        self.dice_loss.append(1 - dice_coefficient)
+
         self.iou.append(iou)
 
     def getIoU(self):
-        return np.sum(self.iou) / self.batch_n
+        return np.sum(self.iou) / self.batch_n * 100
+
+    def getDiceLoss(self):
+        return np.sum(self.dice_loss) / self.batch_n * 100
 
     def getPixelAccuracy(self):
         if(self.pixel_total_sum > 0):
@@ -52,6 +62,7 @@ class EvaluationMetrics:
         print("Evaluating model with:")
         print("Pixel accuracy " + str(round(self.getPixelAccuracy(), 2)) + "%")
         print("Average intersection over union " + str(round(self.getIoU(), 2)) + "%")
+        print("Average Dice Loss " + str(round(self.getDiceLoss(), 2)) + "%")
 
 
 def bbox(points):
@@ -122,7 +133,6 @@ if __name__ == "__main__":
         break
 
     evalMetrics.getEvaluation()
-    #print(batch_n)
 
     print("\nEvaluation completed")
 
