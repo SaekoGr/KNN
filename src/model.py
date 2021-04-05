@@ -30,9 +30,9 @@ class PSPnet(nn.Module):
 
         self.full_pool16 = nn.MaxPool2d((16,16), 16)
         self.final_conv1_wrm = nn.Conv2d(512*5+1, 1024, 3)
-        self.final_conv1_worm = nn.Conv2d(512*5, 1024, 3)
-        self.final_conv2 = nn.Conv2d(1024, 256, 3)
-        self.final_conv3 = nn.Conv2d(256, 1, 3)
+        self.final_conv1_worm = nn.Conv2d(512*5, 1024, 3, padding=1)
+        self.final_conv2 = nn.Conv2d(1024, 256, 3, padding=1)
+        self.final_conv3 = nn.Conv2d(256, 1, 3, padding=1)
 
 
     def forward(self, x):
@@ -57,6 +57,7 @@ class PSPnet(nn.Module):
         x = F.relu(self.conv5(x)) # W*H*256
 
 
+
         # save original feature map for concat at the end
         x0 = F.relu(self.conv6(x)) # 1/1 size of original image
 
@@ -69,14 +70,6 @@ class PSPnet(nn.Module):
         x = self.pool(F.relu(self.conv7(x))) # 1/8 size of original image
         x3 = x
         x4 = self.pool(F.relu(self.conv7(x))) # 1/16 size of original image
-
-
-        # # Each feature map filter through 1x1 conv layer, which flattens 3. dimension
-        # x0 = F.relu(self.global_flat_conv(x0))
-        # x1 = F.relu(self.global_flat_conv(x1))
-        # x2 = F.relu(self.global_flat_conv(x2))
-        # x3 = F.relu(self.global_flat_conv(x3))
-        # x4 = F.relu(self.global_flat_conv(x4))
 
 
         # # TODO 
@@ -93,14 +86,8 @@ class PSPnet(nn.Module):
         # Concatenate all layers
         # After every concatenation
         x3 = F.relu(self.same_size_conv(torch.cat((x3, self.upsample2(x4)), 1))) # 1/8 size of an image
-        print(x3.shape)
         x2 = F.relu(self.same_size_conv(torch.cat((x2, self.upsample2(x3)), 1))) # 1/4 size of an image
-        print(x2.shape)
-
         x1 = F.relu(self.same_size_conv(torch.cat((x1, self.upsample2(x2)), 1))) # 1/2 size of an image
-        print(x0.shape)
-        print(x1.shape)
-
         x0 = F.relu(self.same_size_conv(torch.cat((x0, self.upsample2(x1)), 1))) # 1/1 size of an image
 
 
@@ -112,6 +99,8 @@ class PSPnet(nn.Module):
                         self.upsample8(x3), 
                         self.upsample16(x4),
                         ), 1)
+        
+        print("inside", x.shape)
         
         if type(self.refinment_maps) != type(None):
             x = torch.cat((x, self.upsample16(x5)), 1)

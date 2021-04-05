@@ -12,8 +12,10 @@ print(batch_n)
 s = perf_counter()
 for n in range(batch_n):
 	X, _ = next(g)
+	print(X.shape)
 	with no_grad():
-		_ = m(X)
+		y_pred = m(X)
+	print(y_pred.shape)
 	del X
 	loading(n+1, batch_n)
 	collect()
