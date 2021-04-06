@@ -11,21 +11,19 @@ class PSPnet(nn.Module):
         self.refinment_maps = None
 
         # Basic downsampling
-        self.conv_enter_enc = nn.Conv2d(5, 32, 3, padding=2, dilation=2)
-        self.conv1_enc = nn.Conv2d(32, 64, 3, padding=2, dilation=2)
-        self.conv2_enc = nn.Conv2d(64, 128, 3, padding=2, dilation=2)
-        self.conv3_enc = nn.Conv2d(128, 256, 3, padding=2, dilation=2)
-        self.conv4_enc = nn.Conv2d(256, 512, 3, padding=1, dilation=1)
+        self.conv_enter_enc = nn.Conv2d(5, 8, 3, padding=2, dilation=2)
+        self.conv1_enc = nn.Conv2d(8, 16, 3, padding=2, dilation=2)
+        self.conv2_enc = nn.Conv2d(16, 32, 3, padding=2, dilation=2)
+        self.conv3_enc = nn.Conv2d(32, 64, 3, padding=2, dilation=2)
+        self.conv4_enc = nn.Conv2d(64, 128, 3, padding=1, dilation=1)
 
-        self.conv_ref1 = nn.Conv2d(513, 256, 3, padding=1, dilation=1)
-        self.conv_ref2 = nn.Conv2d(256, 64, 3, padding=1, dilation=1)
-        self.conv_adjust_ref1 = nn.Conv2d(576, 512, 3, padding=1)
-        self.conv_adjust_ref2 = nn.Conv2d(1024, 512, 3, padding=1)
+        self.conv_ref1 = nn.Conv2d(129, 128, 3, padding=1, dilation=1)
+        self.conv_ref2 = nn.Conv2d(128*2, 128, 3, padding=1)
 
-        self.conv1_dec = nn.Conv2d(768, 256, 3, padding=1, dilation=1)
-        self.conv2_dec = nn.Conv2d(384, 128, 3, padding=1, dilation=1)
-        self.conv3_dec = nn.Conv2d(192, 64, 3, padding=1, dilation=1)
-        self.conv4_dec = nn.Conv2d(96, 32, 3, padding=1, dilation=1)
+        self.conv1_dec = nn.Conv2d(64+128, 64, 3, padding=1, dilation=1)
+        self.conv2_dec = nn.Conv2d(64+32, 32, 3, padding=1, dilation=1)
+        self.conv3_dec = nn.Conv2d(32+16, 16, 3, padding=1, dilation=1)
+        self.conv4_dec = nn.Conv2d(16+8, 8, 3, padding=1, dilation=1)
 
 
         self.upsample2 = nn.Upsample(scale_factor=(2,2), mode="bilinear", align_corners=True)
@@ -34,9 +32,9 @@ class PSPnet(nn.Module):
         self.upsample16 = nn.Upsample(scale_factor=(16,16), mode="bilinear", align_corners=True)
 
 
-        self.final_conv1 = nn.Conv2d(992, 512, 3, padding=1, dilation=1)
-        self.final_conv2 = nn.Conv2d(512, 64, 1)
-        self.final_conv3 = nn.Conv2d(64, 1, 1)
+        self.final_conv1 = nn.Conv2d(248, 128, 3, padding=1, dilation=1)
+        self.final_conv2 = nn.Conv2d(128, 32, 1)
+        self.final_conv3 = nn.Conv2d(32, 1, 1)
 
 
 
@@ -56,26 +54,24 @@ class PSPnet(nn.Module):
         """
 
         # Encoder of CoarseNet
-        x = F.relu(self.conv_enter_enc(x)) # W*H*32 1/1 size
-        x0 = F.relu(self.pool2(self.conv1_enc(x))) # W*H*64 1/2 size
-        x1 = F.relu(self.pool2(self.conv2_enc(x0))) # W*H*128 1/4 size
-        x2 = F.relu(self.pool2(self.conv3_enc(x1))) # W*H*256 1/8 size
-        x3 = F.relu(self.pool2(self.conv4_enc(x2))) # W*H*512 1/16 size
+        x = F.relu(self.conv_enter_enc(x)) # W*H*8 1/1 size
+        x0 = F.relu(self.pool2(self.conv1_enc(x))) # W*H*16 1/2 size
+        x1 = F.relu(self.pool2(self.conv2_enc(x0))) # W*H*32 1/4 size
+        x2 = F.relu(self.pool2(self.conv3_enc(x1))) # W*H*64 1/8 size
+        x3 = F.relu(self.pool2(self.conv4_enc(x2))) # W*H*128 1/16 size
 
 
         # refinement maps module
         if type(self.refinment_maps) != type(None):
             refs = self.pool16(F.relu(nn.Conv2d(self.refinment_maps.shape[0], 1, 1))) # W/16 * H/16 * 1
-            x4 = F.relu(self.conv_ref1(torch.cat((x3, refs), 1))) # W/16 * H/16 * 256
-            x4 = F.relu(self.conv_ref2(x4)) # W/16 * H/16 * 64
-            x3_copy = F.relu(self.conv_adjust_ref1(torch.cat((x3, x4), 1))) # W/16 * H/16 * 512
-            x3 = F.relu(self.conv_adjust_ref2(torch.cat((x3, x3_copy), 1))) # W/16 * H/16 * 512
+            x4 = F.relu(self.conv_ref1(torch.cat((x3, refs), 1))) # W/16 * H/16 * 128
+            x3 = F.relu(self.conv_ref2(torch.cat((x3, x4), 1))) # W/16 * H/16 * 128
 
 
         # Decoder of CoarseNet
-        x2 = F.relu(self.conv1_dec(torch.cat((x2, self.upsample2(x3)), 1))) # W/8 * H/8 * 256
-        x1 = F.relu(self.conv2_dec(torch.cat((x1, self.upsample2(x2)), 1))) # W/4 * H/4 * 128
-        x0 = F.relu(self.conv3_dec(torch.cat((x0, self.upsample2(x1)), 1))) # W/2 * H/2 * 64
+        x2 = F.relu(self.conv1_dec(torch.cat((x2, self.upsample2(x3)), 1))) # W/8 * H/8 * 
+        x1 = F.relu(self.conv2_dec(torch.cat((x1, self.upsample2(x2)), 1))) # W/4 * H/4 * 
+        x0 = F.relu(self.conv3_dec(torch.cat((x0, self.upsample2(x1)), 1))) # W/2 * H/2 * 
         x = F.relu(self.conv4_dec(torch.cat((x, self.upsample2(x0)), 1))) # W * H * 32
 
         # FineNet
