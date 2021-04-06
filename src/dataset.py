@@ -62,8 +62,8 @@ def batch_generator(batch_size, min_res_size, isTrain=True):
 	"""
 
 	annotation_file = "annotation.json"
-	train_folder_path = "/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/train"
-	test_folder_path = "/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/val/"
+	train_folder_path = "/home/sabi/Desktop/KNN/part1" #"/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/train"
+	test_folder_path = "/home/sabi/Desktop/KNN/val/" #"/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/val/"
 
 
 	if isTrain:
@@ -84,7 +84,7 @@ def batch_generator(batch_size, min_res_size, isTrain=True):
 	y_batch = []
 	new_bboxes = []
 	while True:
-		shuffle(annotation)
+		#shuffle(annotation)
 		for img_obj in annotation:
 
 			#! Skipping run encoding and microscopic objects
@@ -185,7 +185,10 @@ def batch_generator(batch_size, min_res_size, isTrain=True):
 				x_batch = torch.stack(x_batch)
 				y_batch = torch.stack(y_batch)
 				x_batch, _ = get_maps(x_batch, y_batch, new_bboxes)
-				yield x_batch, y_batch
+				if(isTrain):
+					yield x_batch, y_batch
+				else:
+					yield x_batch, y_batch, new_bboxes
 				del batch_pool[(w,h)]
 				x_batch, y_batch = [], []
 				new_bboxes = []
