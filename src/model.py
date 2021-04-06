@@ -99,9 +99,7 @@ class PSPnet(nn.Module):
                         self.upsample8(x3), 
                         self.upsample16(x4),
                         ), 1)
-        
-        print("inside", x.shape)
-        
+                
         if type(self.refinment_maps) != type(None):
             x = torch.cat((x, self.upsample16(x5)), 1)
             self.refinment_maps = None
@@ -112,6 +110,14 @@ class PSPnet(nn.Module):
 
         x = F.relu(self.final_conv2(x))
         y = F.relu(self.final_conv3(x))
+        
+        del x
+        del x0
+        del x1
+        del x2
+        del x3
+        del x4
+        torch.cuda.empty_cache()
         return y
 
 

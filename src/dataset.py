@@ -186,9 +186,9 @@ def batch_generator(batch_size, min_res_size, isTrain=True):
 				y_batch = torch.stack(y_batch)
 				x_batch, _ = get_maps(x_batch, y_batch, new_bboxes)
 				if(isTrain):
-					yield x_batch, y_batch
+					yield x_batch.cuda(), y_batch.cuda()
 				else:
-					yield x_batch, y_batch, new_bboxes
+					yield x_batch.cuda(), y_batch.cuda(), new_bboxes
 				del batch_pool[(w,h)]
 				x_batch, y_batch = [], []
 				new_bboxes = []
