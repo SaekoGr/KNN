@@ -4,13 +4,15 @@ import json
 import random
 from shapely.geometry import Polygon, Point
 import matplotlib.pyplot as plt
+import numpy as np
 
 
-def generate_clicks(siluet, bbox):
-    clicks_num = 5
+def generate_clicks(siluet, bbox, other_clicks_num):
+    clicks_num = 1+other_clicks_num
     clicks_points = []
     click_map = torch.zeros_like(siluet)
-    other_clicks = torch.zeros(4, siluet.shape[1], siluet.shape[2])
+    other_clicks = torch.zeros(other_clicks_num, siluet.shape[1], siluet.shape[2]) if other_clicks_num > 0 else torch.zeros(1, siluet.shape[1], siluet.shape[2])
+
     # generate clicks with MonteCarlo method
     while clicks_num > 0:
         random_x = random.randint(int(bbox[0]), int(bbox[2])-1)
@@ -56,19 +58,20 @@ def generate_b_map(siluet, bbox):
 
 
 def get_maps(x_batch, y_batch, bboxes):
+    other_clicks_num = round(np.random.exponential())
     other_clicks_maps = []
     click_maps = []
     b_maps = []
 
-    for i, siluet in enumerate(y_batch):
+    for siluet, bbox in zip(y_batch, bboxes):
         # CLICKS
-        first_click, other_clicks = generate_clicks(siluet, bboxes[i])
+        first_click, other_clicks = generate_clicks(siluet, bbox, other_clicks_num)
 
         click_maps.append(first_click)
         other_clicks_maps.append(other_clicks)
 
         # BORDERS
-        b_maps.append(generate_b_map(siluet, bboxes[i]))
+        b_maps.append(generate_b_map(siluet, bbox))
 
     click_maps = torch.stack(click_maps)
     b_maps = torch.stack(b_maps)

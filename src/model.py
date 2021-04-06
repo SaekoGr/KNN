@@ -63,16 +63,17 @@ class PSPnet(nn.Module):
 
         # refinement maps module
         if type(self.refinment_maps) != type(None):
-            refs = self.pool16(F.relu(nn.Conv2d(self.refinment_maps.shape[0], 1, 1))) # W/16 * H/16 * 1
+            
+            refs = self.pool16(F.relu(nn.Conv2d(self.refinment_maps.shape[1], 1, 1)(self.refinment_maps))) # W/16 * H/16 * 1
             x4 = F.relu(self.conv_ref1(torch.cat((x3, refs), 1))) # W/16 * H/16 * 128
             x3 = F.relu(self.conv_ref2(torch.cat((x3, x4), 1))) # W/16 * H/16 * 128
 
 
         # Decoder of CoarseNet
-        x2 = F.relu(self.conv1_dec(torch.cat((x2, self.upsample2(x3)), 1))) # W/8 * H/8 * 
-        x1 = F.relu(self.conv2_dec(torch.cat((x1, self.upsample2(x2)), 1))) # W/4 * H/4 * 
-        x0 = F.relu(self.conv3_dec(torch.cat((x0, self.upsample2(x1)), 1))) # W/2 * H/2 * 
-        x = F.relu(self.conv4_dec(torch.cat((x, self.upsample2(x0)), 1))) # W * H * 32
+        x2 = F.relu(self.conv1_dec(torch.cat((x2, self.upsample2(x3)), 1))) # W/8 * H/8 * 64
+        x1 = F.relu(self.conv2_dec(torch.cat((x1, self.upsample2(x2)), 1))) # W/4 * H/4 * 32
+        x0 = F.relu(self.conv3_dec(torch.cat((x0, self.upsample2(x1)), 1))) # W/2 * H/2 * 16
+        x = F.relu(self.conv4_dec(torch.cat((x, self.upsample2(x0)), 1))) # W * H * 8
 
         # FineNet
         x = F.relu(self.final_conv1(
@@ -120,7 +121,7 @@ class PSPnet(nn.Module):
             x (additional feature map): same size feature map of another positive click
         """
 
-        self.refinment_maps = self.full_pool16(refinment_maps)
+        self.refinment_maps = refinment_maps
 
     def load_model(self, filename):
         pass

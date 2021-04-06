@@ -88,11 +88,11 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
 	y_batch = []
 	new_bboxes = []
 	while True:
-		#shuffle(annotation)
+		shuffle(annotation)
 		for img_obj in annotation:
 
 			#! Skipping run encoding and microscopic objects
-			if type(img_obj["segmentation"]) == dict or img_obj["area"] < 20:
+			if type(img_obj["segmentation"]) == dict or img_obj["area"] < 20 or (img_obj["bbox"][2] > 512 and img_obj["bbox"][3] > 512):
 				continue
 
 			# Get nearest bigger power of 2 of width and height
@@ -188,14 +188,14 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
 				
 				x_batch = torch.stack(x_batch)
 				y_batch = torch.stack(y_batch)
-				x_batch, _ = get_maps(x_batch, y_batch, new_bboxes)
+				x_batch, refs = get_maps(x_batch, y_batch, new_bboxes)
 				if CUDA:
 					x_batch, y_batch = x_batch.cuda(), y_batch.cuda()
 
 				if(isTrain):
-					yield x_batch, y_batch
+					yield x_batch, y_batch, refs
 				else:
-					yield x_batch, y_batch, new_bboxes
+					yield x_batch, y_batch, refs, new_bboxes
 				del batch_pool[(w,h)]
 				x_batch, y_batch = [], []
 				new_bboxes = []
