@@ -6,33 +6,40 @@ import torch.nn.functional as F
 class PSPnet(nn.Module):
     def __init__(self):
         super(PSPnet, self).__init__()
-        self.pool = nn.MaxPool2d(2, 2)
+        self.pool2 = nn.MaxPool2d(2, 2)
+        self.pool16 = nn.MaxPool2d(16, 16)
         self.refinment_maps = None
 
         # Basic downsampling
-        self.conv1 = nn.Conv2d(5, 16, 3, padding=2, dilation=2)
-        self.conv2 = nn.Conv2d(16, 32, 3, padding=2, dilation=2)
-        self.conv3 = nn.Conv2d(32, 64, 3, padding=2, dilation=2)
-        self.conv4 = nn.Conv2d(64, 128, 3, padding=1, dilation=1)
-        self.conv5 = nn.Conv2d(128, 256, 3, padding=1, dilation=1)
-        self.conv6 = nn.Conv2d(256, 512, 3, padding=1, dilation=1)
-        self.conv7 = nn.Conv2d(512, 512, 3, padding=1, dilation=1)
+        self.conv_enter_enc = nn.Conv2d(5, 32, 3, padding=2, dilation=2)
+        self.conv1_enc = nn.Conv2d(32, 64, 3, padding=2, dilation=2)
+        self.conv2_enc = nn.Conv2d(64, 128, 3, padding=2, dilation=2)
+        self.conv3_enc = nn.Conv2d(128, 256, 3, padding=2, dilation=2)
+        self.conv4_enc = nn.Conv2d(256, 512, 3, padding=1, dilation=1)
 
+        self.conv_ref1 = nn.Conv2d(513, 256, 3, padding=1, dilation=1)
+        self.conv_ref2 = nn.Conv2d(256, 64, 3, padding=1, dilation=1)
+        self.conv_adjust_ref1 = nn.Conv2d(576, 512, 3, padding=1)
+        self.conv_adjust_ref2 = nn.Conv2d(1024, 512, 3, padding=1)
 
-        self.flat_conv = nn.Conv2d(513, 1, 1)
-        self.adjust_conv = nn.Conv2d(513, 512, 1)
-        self.same_size_conv = nn.Conv2d(512*2, 512, 1)
+        self.conv1_dec = nn.Conv2d(768, 256, 3, padding=1, dilation=1)
+        self.conv2_dec = nn.Conv2d(384, 128, 3, padding=1, dilation=1)
+        self.conv3_dec = nn.Conv2d(192, 64, 3, padding=1, dilation=1)
+        self.conv4_dec = nn.Conv2d(96, 32, 3, padding=1, dilation=1)
+
 
         self.upsample2 = nn.Upsample(scale_factor=(2,2), mode="bilinear", align_corners=True)
         self.upsample4 = nn.Upsample(scale_factor=(4,4), mode="bilinear", align_corners=True)
         self.upsample8 = nn.Upsample(scale_factor=(8,8), mode="bilinear", align_corners=True)
         self.upsample16 = nn.Upsample(scale_factor=(16,16), mode="bilinear", align_corners=True)
 
-        self.full_pool16 = nn.MaxPool2d((16,16), 16)
-        self.final_conv1_wrm = nn.Conv2d(512*5+1, 1024, 3)
-        self.final_conv1_worm = nn.Conv2d(512*5, 1024, 3, padding=1)
-        self.final_conv2 = nn.Conv2d(1024, 256, 3, padding=1)
-        self.final_conv3 = nn.Conv2d(256, 1, 3, padding=1)
+
+        self.final_conv1 = nn.Conv2d(992, 512, 3, padding=1, dilation=1)
+        self.final_conv2 = nn.Conv2d(512, 64, 1)
+        self.final_conv3 = nn.Conv2d(64, 1, 1)
+
+
+
 
 
     def forward(self, x):
@@ -48,75 +55,48 @@ class PSPnet(nn.Module):
             y: segmented image of W*H*1 (black & white)
         """
 
-        # print("x shape = ", x.shape)
-        # creating first bitmap of W*H size
-        x = F.relu(self.conv1(x)) # W*H*16
-        x = F.relu(self.conv2(x)) # W*H*32
-        x = F.relu(self.conv3(x)) # W*H*64
-        x = F.relu(self.conv4(x)) # W*H*128
-        x = F.relu(self.conv5(x)) # W*H*256
+        # Encoder of CoarseNet
+        x = F.relu(self.conv_enter_enc(x)) # W*H*32 1/1 size
+        x0 = F.relu(self.pool2(self.conv1_enc(x))) # W*H*64 1/2 size
+        x1 = F.relu(self.pool2(self.conv2_enc(x0))) # W*H*128 1/4 size
+        x2 = F.relu(self.pool2(self.conv3_enc(x1))) # W*H*256 1/8 size
+        x3 = F.relu(self.pool2(self.conv4_enc(x2))) # W*H*512 1/16 size
 
 
-
-        # save original feature map for concat at the end
-        x0 = F.relu(self.conv6(x)) # 1/1 size of original image
-
-        # start creating smaller feature maps for better understanding global context
-        # all maps has 3. dimension of 512
-        x = self.pool(F.relu(self.conv6(x))) # 1/2 size of original image
-        x1 = x
-        x = self.pool(F.relu(self.conv7(x))) # 1/4 size of original image
-        x2 = x
-        x = self.pool(F.relu(self.conv7(x))) # 1/8 size of original image
-        x3 = x
-        x4 = self.pool(F.relu(self.conv7(x))) # 1/16 size of original image
-
-
-        # # TODO 
-        # # use refinement maps 
-        # save mid result for adding refinment maps
-        # self.mid_res = [x, x0, x1, x2, x3, x4]
-
-        # x5 includes additive click from user
+        # refinement maps module
         if type(self.refinment_maps) != type(None):
-            x5 = F.relu(self.flat_conv(torch.cat((x4, self.refinment_maps), 1)))
-            x4 = F.relu(self.adjust_conv(torch.cat((x4, x5))))
-
-        # Start from smallest map and upsamle to the size of previus layer.
-        # Concatenate all layers
-        # After every concatenation
-        x3 = F.relu(self.same_size_conv(torch.cat((x3, self.upsample2(x4)), 1))) # 1/8 size of an image
-        x2 = F.relu(self.same_size_conv(torch.cat((x2, self.upsample2(x3)), 1))) # 1/4 size of an image
-        x1 = F.relu(self.same_size_conv(torch.cat((x1, self.upsample2(x2)), 1))) # 1/2 size of an image
-        x0 = F.relu(self.same_size_conv(torch.cat((x0, self.upsample2(x1)), 1))) # 1/1 size of an image
+            refs = self.pool16(F.relu(nn.Conv2d(self.refinment_maps.shape[0], 1, 1))) # W/16 * H/16 * 1
+            x4 = F.relu(self.conv_ref1(torch.cat((x3, refs), 1))) # W/16 * H/16 * 256
+            x4 = F.relu(self.conv_ref2(x4)) # W/16 * H/16 * 64
+            x3_copy = F.relu(self.conv_adjust_ref1(torch.cat((x3, x4), 1))) # W/16 * H/16 * 512
+            x3 = F.relu(self.conv_adjust_ref2(torch.cat((x3, x3_copy), 1))) # W/16 * H/16 * 512
 
 
+        # Decoder of CoarseNet
+        x2 = F.relu(self.conv1_dec(torch.cat((x2, self.upsample2(x3)), 1))) # W/8 * H/8 * 256
+        x1 = F.relu(self.conv2_dec(torch.cat((x1, self.upsample2(x2)), 1))) # W/4 * H/4 * 128
+        x0 = F.relu(self.conv3_dec(torch.cat((x0, self.upsample2(x1)), 1))) # W/2 * H/2 * 64
+        x = F.relu(self.conv4_dec(torch.cat((x, self.upsample2(x0)), 1))) # W * H * 32
 
-        # At the end concat once again all layers with individual upsampling
-        x = torch.cat((x0, 
-                        self.upsample2(x1), 
-                        self.upsample4(x2), 
-                        self.upsample8(x3), 
-                        self.upsample16(x4),
-                        ), 1)
-                
-        if type(self.refinment_maps) != type(None):
-            x = torch.cat((x, self.upsample16(x5)), 1)
-            self.refinment_maps = None
-            x = F.relu(self.final_conv_wrm(x))
-        else:
-            x = F.relu(self.final_conv1_worm(x))
+        # FineNet
+        x = F.relu(self.final_conv1(
+            torch.cat(
+                (
+                    x,
+                    self.upsample2(x0),
+                    self.upsample4(x1),
+                    self.upsample8(x2),
+                    self.upsample16(x3)
+                ),1
+            )
+        ))
+        y = F.relu(self.final_conv2(x))
+        y = F.relu(self.final_conv3(y))
 
-
-        x = F.relu(self.final_conv2(x))
-        y = F.relu(self.final_conv3(x))
-        
-        del x
         del x0
         del x1
         del x2
         del x3
-        del x4
         torch.cuda.empty_cache()
         return y
 

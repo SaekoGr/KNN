@@ -44,7 +44,7 @@ def generate_y(x, segmentation):
 	
 	return y
 
-def batch_generator(batch_size, min_res_size, isTrain=True):
+def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
 	"""Batch generator for training&testing data.
 	if type == train, then generator needs both parts in one folder.
 	Path to folder and other detail can be modified in body of function
@@ -62,8 +62,12 @@ def batch_generator(batch_size, min_res_size, isTrain=True):
 	"""
 
 	annotation_file = "annotation.json"
-	train_folder_path = "/home/sabi/Desktop/KNN/part1" #"/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/train"
-	test_folder_path = "/home/sabi/Desktop/KNN/val/" #"/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/val/"
+	# train_folder_path = "/home/sabi/Desktop/KNN/part1" #"/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/train"
+	# test_folder_path = "/home/sabi/Desktop/KNN/val/" #"/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/val/"
+
+	train_folder_path = "/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/train"
+	test_folder_path = "/mnt/d/Škola/Ing_2020_leto/KNN/Projekt/dataset/coco/divided_dataset/val/"
+
 
 
 	if isTrain:
@@ -185,10 +189,13 @@ def batch_generator(batch_size, min_res_size, isTrain=True):
 				x_batch = torch.stack(x_batch)
 				y_batch = torch.stack(y_batch)
 				x_batch, _ = get_maps(x_batch, y_batch, new_bboxes)
+				if CUDA:
+					x_batch, y_batch = x_batch.cuda(), y_batch.cuda()
+
 				if(isTrain):
-					yield x_batch.cuda(), y_batch.cuda()
+					yield x_batch, y_batch
 				else:
-					yield x_batch.cuda(), y_batch.cuda(), new_bboxes
+					yield x_batch, y_batch, new_bboxes
 				del batch_pool[(w,h)]
 				x_batch, y_batch = [], []
 				new_bboxes = []
