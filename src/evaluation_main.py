@@ -1,9 +1,16 @@
 #!/usr/bin/env python
 import torch
 from model import PSPnet
-from dataset import batch_generator
+from dataset import batch_generator, loading
 import numpy as np
+import gc
+from time import perf_counter
 
+if torch.cuda.is_available():
+  dev = "cuda:0" 
+else:
+  dev = "cpu"  
+device = torch.device(dev)
 
 class EvaluationMetrics:
     def __init__(self, batch_n):
@@ -20,8 +27,8 @@ class EvaluationMetrics:
         [self.intersectionOverUnion(groundBbox[i], predictionBbox[i]) for i in range(len(groundBbox))]
 
     def pixelAccuracy(self, y, prediction):
-        ones_count = (np.abs(y - prediction)).sum()
-        full_shape = np.prod([prediction.shape])
+        ones_count = ((np.abs(y - prediction)).sum()).item()
+        full_shape = (np.prod([prediction.shape])).item()
 
         self.pixel_acc_err += ones_count
         self.pixel_total_sum += full_shape
@@ -52,10 +59,10 @@ class EvaluationMetrics:
         dice_coefficient = (2*intersectionArea) / (unionArea + intersectionArea)
 
         #print("Dice coefficient " + str(dice_coefficient))
-        self.dice_coeff.append(dice_coefficient)
-        self.dice_loss.append(1 - dice_coefficient)
+        self.dice_coeff.append(dice_coefficient.item())
+        self.dice_loss.append((1 - dice_coefficient).item())
 
-        self.iou.append(iou)
+        self.iou.append(iou.item())
 
     def getIoU(self):
         #print(self.iou)
@@ -67,13 +74,13 @@ class EvaluationMetrics:
 
     def getPixelAccuracy(self):
         if(self.pixel_total_sum > 0):
-            return ((self.pixel_acc_err) / self.pixel_total_sum * 100).item()
+            return ((self.pixel_acc_err) / self.pixel_total_sum * 100)
         else:
             return 0
 
     def getEvaluation(self):
         print("\n================================")
-        print("Evaluating model with:")
+        print("Evaluating model:")
         print("Pixel accuracy " + str(round(self.getPixelAccuracy(), 2)) + "%")
         print("Average intersection over union " + str(round(self.getIoU(), 2)) + "%")
         print("Average Dice Loss " + str(round(self.getDiceLoss(), 2)) + "%")
@@ -129,38 +136,47 @@ def bbox(points):
     return (y_min, x_min, y_max, x_max)
 
 if __name__ == "__main__":
-    batch_size = 1
+    batch_size = 4
     threshold = 0.5
 
     gen = batch_generator(batch_size, 16, False)
     model = PSPnet() # this will get loaded: load_model()
+    model.to(device)
 
     batch_n = next(gen)
 
     evalMetrics = EvaluationMetrics(batch_n)
 
+    model.zero_grad()
 
+    s = perf_counter()
     for n in range(batch_n):
         X, y, bboxes = next(gen)
         #print(X.shape, y.shape, bboxes)
 
         with torch.no_grad():
             prediction = model(X)
+            prediction = (prediction.cuda()).detach().cpu().clone().numpy()
 
-            #print(prediction.shape)
-            thresholded_prediction = np.where(prediction >= threshold, 1.0, 0.0)
-            # calculate bounding boxes for thresholded prediction
-            prediction_bboxes = [bbox(thresholded_prediction[i][0]) for i in range(batch_size)]
+        #print(prediction.shape)
+        thresholded_prediction = np.where(prediction >= threshold, 1.0, 0.0)
+        # calculate bounding boxes for thresholded prediction
+        prediction_bboxes = [bbox(thresholded_prediction[i][0]) for i in range(batch_size)]
 
-            # evaluate this batch
-            print("Evaluating")
-            #print(y.shape, prediction.shape)
-            evalMetrics.evaluateBatch(y, thresholded_prediction, bboxes, prediction_bboxes)
+        # evaluate this batch
+        #print("Evaluating")
+        #print(y.shape, prediction.shape)
+        evalMetrics.evaluateBatch(y.cpu(), thresholded_prediction, bboxes, prediction_bboxes)
 
-            
+        del X, y, bboxes, prediction
+
+        gc.collect()
+        torch.cuda.empty_cache()
+        loading(n+1, batch_n)
         # uncomment for final product
         #break
 
+    print("total time = ", perf_counter() - s)
     evalMetrics.getEvaluation()
 
     print("\nEvaluation completed")
