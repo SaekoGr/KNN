@@ -18,8 +18,11 @@ class EvaluationMetrics:
         self.pixel_total_sum = 0
         self.pixel_acc_err = 0
         self.iou = []
+        self.unionArea = []
+        self.intersectionArea = []
         self.dice_coeff = []
         self.dice_loss = []
+
 
     def evaluateBatch(self, groundTruth, prediction, groundBbox, predictionBbox):
         #print("Evaluated model by Pixel accuracy")
@@ -53,24 +56,26 @@ class EvaluationMetrics:
         intersectionArea = abs(x6 - x5) * abs(y6 - y5)
         #print("Intersection area " + str(intersectionArea))
         unionArea =  area1 + area2 - intersectionArea
-        iou = intersectionArea / unionArea
+        self.unionArea.append(unionArea)
+        self.intersectionArea.append(intersectionArea)
+        #iou = intersectionArea / unionArea
         #print("IoU " + str(iou))
 
         dice_coefficient = (2*intersectionArea) / (unionArea + intersectionArea)
 
         #print("Dice coefficient " + str(dice_coefficient))
-        self.dice_coeff.append(dice_coefficient.item())
-        self.dice_loss.append((1 - dice_coefficient).item())
+        #self.dice_coeff.append(dice_coefficient.item())
+        #self.dice_loss.append((1 - dice_coefficient).item())
 
-        self.iou.append(iou.item())
+        #self.iou.append(iou.item())
 
     def getIoU(self):
         #print(self.iou)
-        return np.sum(self.iou) / self.batch_n * 100
+        return np.sum(self.intersectionArea) / np.sum(self.unionArea) * 100
 
     def getDiceLoss(self):
         #print(self.dice_loss)
-        return np.sum(self.dice_loss) / self.batch_n * 100
+        return np.sum(2 * self.intersectionArea) / (np.sum(self.unionArea + self.intersectionArea)) * 100
 
     def getPixelAccuracy(self):
         if(self.pixel_total_sum > 0):
@@ -82,8 +87,8 @@ class EvaluationMetrics:
         print("\n================================")
         print("Evaluating model:")
         print("Pixel accuracy " + str(round(self.getPixelAccuracy(), 2)) + "%")
-        print("Average intersection over union " + str(round(self.getIoU(), 2)) + "%")
-        print("Average Dice Loss " + str(round(self.getDiceLoss(), 2)) + "%")
+        print("Intersection over union " + str(round(self.getIoU(), 2)) + "%")
+        print("Dice coefficient " + str(round(self.getDiceLoss(), 2)) + "%")
 
 
 def bbox(points):
@@ -136,7 +141,7 @@ def bbox(points):
     return (y_min, x_min, y_max, x_max)
 
 if __name__ == "__main__":
-    batch_size = 4
+    batch_size = 6
     threshold = 0.5
 
     gen = batch_generator(batch_size, 16, False)
@@ -151,7 +156,7 @@ if __name__ == "__main__":
 
     s = perf_counter()
     for n in range(batch_n):
-        X, y, bboxes = next(gen)
+        X, y, _, bboxes = next(gen)
         #print(X.shape, y.shape, bboxes)
 
         with torch.no_grad():
