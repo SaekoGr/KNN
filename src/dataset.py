@@ -80,6 +80,9 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
 	with open(full_path) as fd:
 		annotation = json.load(fd)
 
+	if isTrain:
+		annotation = annotation[:len(annotation)//2]
+
 	batch_n = len(annotation) // batch_size
 	yield batch_n
 
@@ -91,7 +94,7 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
 		shuffle(annotation)
 		for img_obj in annotation:
 
-			#! Skipping run encoding and microscopic objects
+			#! Skipping run encoding and microscopic and gigantic objects
 			if type(img_obj["segmentation"]) == dict or img_obj["area"] < 20 or (img_obj["bbox"][2] > 512 and img_obj["bbox"][3] > 512):
 				continue
 
@@ -190,10 +193,10 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
 				y_batch = torch.stack(y_batch)
 				x_batch, refs = get_maps(x_batch, y_batch, new_bboxes)
 				if CUDA:
-					x_batch, y_batch = x_batch.cuda(), y_batch.cuda()
+					x_batch, y_batch, refs = x_batch.cuda(), y_batch.cuda(), refs.cuda()
 
 				if(isTrain):
-					yield x_batch, y_batch, refs
+					yield x_batch, y_batch, refs, None
 				else:
 					yield x_batch, y_batch, refs, new_bboxes
 				del batch_pool[(w,h)]
@@ -207,22 +210,22 @@ def loading(i, margin):
 
 		
 if __name__ == "__main__":
-	batch_size = 64
+	batch_size = 5
 	min_res_size = 16
-	gen = batch_generator(batch_size, min_res_size, False)
+	gen = batch_generator(batch_size, min_res_size, False, False)
 	l = next(gen)
-	# print(l)
-	# for X, y in gen:
-	# 	print(X.shape)
-	# 	input()
+	print(l)
+	for X, y, _, _ in gen:
+		print(X.shape)
+		input()
 	
-	from time import perf_counter
-	s = perf_counter()
-	for i in range(l):
-		_, _ = next(gen)
-		loading(i+1, l)
+	# from time import perf_counter
+	# s = perf_counter()
+	# for i in range(l):
+	# 	_, _ = next(gen)
+	# 	loading(i+1, l)
 	
-	print("Total time of run is: ", perf_counter() - s)
+	# print("Total time of run is: ", perf_counter() - s)
 
 
 

@@ -1,7 +1,6 @@
-from dataset import batch_generator, loading
-from model import PSPnet
+from dataset import batch_generator, loading, transI
+from model import IOGnet
 from evaluation_main import evaluate
-from torch import no_grad
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -14,7 +13,7 @@ else:
   dev = "cpu"  
 device = torch.device(dev)
 
-m = PSPnet()
+m = IOGnet()
 m.to(device)
 
 lr = 0.001
@@ -26,6 +25,7 @@ loss_fce = F.binary_cross_entropy
 epoch_losses = []
 mean_epoch_losses = [] 
 accuracies = []
+model_path = "/content/gdrive/MyDrive/KNN/IOGnet.h5"
 
 
 # Run 100 epochs
@@ -36,14 +36,17 @@ for n in range(100):
 	for n in range(batch_n):
 		X, y, refs, _ = next(g_train)
 		optimizer.zero_grad()
-		
+
 		# Add another click of user
 		m.add_refinement_map_train(refs)
 
 		# Predict result
 		y_pred = m(X)
+		# transI(y_pred[0]).show()
+		# input()
 
 		loss = loss_fce(y_pred, y)
+		acc = torch.sum(y_pred == y)
 		loss.backward()
 		optimizer.step()
 
@@ -52,14 +55,30 @@ for n in range(100):
 		del y
 		torch.cuda.empty_cache()
 		loading(n+1, batch_n)
-
+		print(loss.item())
 		epoch_losses.append(loss.item())
 	mean_epoch_losses.append(np.asarray(epoch_losses).mean())
-
 	
 	# evaluation
-	pixel_acc, iou, dice_coeff = evaluate(n, m, batch_size=4, min_res_size=16)
+	pixel_acc, iou, dice_coeff = evaluate(n, m, batch_size=batch_size, min_res_size=16)
 	accuracies.append(iou)
+
+	torch.save({
+				'epoch': n,
+				'model_state_dict': m.state_dict(),
+				'optimizer_state_dict': optimizer.state_dict(),
+				'loss': loss,
+				'mean_loss' : mean_epoch_losses,
+				'pixel_acc' : pixel_acc,
+				'iou' : iou,
+				'dice_coeff' : dice_coeff
+				}, f"{model_path}{n}.json")
+	
+	print(f"iou accuracy of {n} model is {iou}")
+	if iou > best_model_acc:
+		print(f"New best model {n}.")
+		best_model_acc = iou
+		best_model_index = n
 
 
 print("DONE!")
