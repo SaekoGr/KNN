@@ -1,7 +1,6 @@
 from dataset import batch_generator, loading
-from model import PSPnet
+from model import IOGnet
 from evaluation_main import evaluate
-from torch import no_grad
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -14,7 +13,7 @@ else:
   dev = "cpu"  
 device = torch.device(dev)
 
-m = PSPnet()
+m = IOGnet()
 m.to(device)
 
 lr = 0.001
@@ -26,6 +25,7 @@ loss_fce = F.binary_cross_entropy
 epoch_losses = []
 mean_epoch_losses = [] 
 accuracies = []
+model_path = "/content/gdrive/MyDrive/KNN/IOGnet.h5"
 
 
 # Run 100 epochs
@@ -44,6 +44,7 @@ for n in range(100):
 		y_pred = m(X)
 
 		loss = loss_fce(y_pred, y)
+		acc = torch.sum(y_pred == y)
 		loss.backward()
 		optimizer.step()
 
@@ -58,7 +59,7 @@ for n in range(100):
 
 	
 	# evaluation
-	pixel_acc, iou, dice_coeff = evaluate(n, m, batch_size=4, min_res_size=16)
+	pixel_acc, iou, dice_coeff = evaluate(n, m, batch_size=batch_size, min_res_size=16)
 	accuracies.append(iou)
 
 

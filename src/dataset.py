@@ -171,16 +171,16 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
 					
 
 					# Help "print"
-					# draw_x = ImageDraw.Draw(resized_x)
-					# draw_x.rectangle(new_bbox, outline="red")
-					# resized_x.show()
-					# resized_y.show()
-					# print(img_obj["file_name"])
-					# print("category = ", img_obj["category_id"])
-					# input()
-					# for proc in psutil.process_iter():
-					# 	if proc.name() == "display":
-					# 		proc.kill()
+					draw_x = ImageDraw.Draw(resized_x)
+					draw_x.rectangle(new_bbox, outline="red")
+					resized_x.show()
+					resized_y.show()
+					print(img_obj["file_name"])
+					print("category = ", img_obj["category_id"])
+					input()
+					for proc in psutil.process_iter():
+						if proc.name() == "display":
+							proc.kill()
 
 					# Change PIL Image to torch.Tensor
 					x_batch.append(trans(resized_x))
@@ -207,22 +207,22 @@ def loading(i, margin):
 
 		
 if __name__ == "__main__":
-	batch_size = 64
+	batch_size = 5
 	min_res_size = 16
-	gen = batch_generator(batch_size, min_res_size, False)
+	gen = batch_generator(batch_size, min_res_size, False, False)
 	l = next(gen)
-	# print(l)
-	# for X, y in gen:
-	# 	print(X.shape)
-	# 	input()
+	print(l)
+	for X, y, _, _ in gen:
+		print(X.shape)
+		input()
 	
-	from time import perf_counter
-	s = perf_counter()
-	for i in range(l):
-		_, _ = next(gen)
-		loading(i+1, l)
+	# from time import perf_counter
+	# s = perf_counter()
+	# for i in range(l):
+	# 	_, _ = next(gen)
+	# 	loading(i+1, l)
 	
-	print("Total time of run is: ", perf_counter() - s)
+	# print("Total time of run is: ", perf_counter() - s)
 
 
 
