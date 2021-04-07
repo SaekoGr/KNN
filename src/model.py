@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class PSPnet(nn.Module):
+class IOGnet(nn.Module):
     def __init__(self):
-        super(PSPnet, self).__init__()
+        super(IOGnet, self).__init__()
         self.pool2 = nn.MaxPool2d(2, 2)
         self.pool16 = nn.MaxPool2d(16, 16)
         self.refinment_maps = None
@@ -36,10 +36,6 @@ class PSPnet(nn.Module):
         self.final_conv2 = nn.Conv2d(128, 32, 1)
         self.final_conv3 = nn.Conv2d(32, 1, 1)
 
-
-
-
-
     def forward(self, x):
         """Function for evaluating input data.
         Be ware that image (x) must have concatenated feature maps (clicks & bounding box) to the image
@@ -63,7 +59,6 @@ class PSPnet(nn.Module):
 
         # refinement maps module
         if type(self.refinment_maps) != type(None):
-            
             refs = self.pool16(F.relu(nn.Conv2d(self.refinment_maps.shape[1], 1, 1)(self.refinment_maps))) # W/16 * H/16 * 1
             x4 = F.relu(self.conv_ref1(torch.cat((x3, refs), 1))) # W/16 * H/16 * 128
             x3 = F.relu(self.conv_ref2(torch.cat((x3, x4), 1))) # W/16 * H/16 * 128
@@ -87,14 +82,8 @@ class PSPnet(nn.Module):
                 ),1
             )
         ))
-        y = F.relu(self.final_conv2(x))
-        y = F.relu(self.final_conv3(y))
-
-        del x0
-        del x1
-        del x2
-        del x3
-        torch.cuda.empty_cache()
+        x = F.relu(self.final_conv2(x))
+        y = F.softmax(self.final_conv3(x))
         return y
 
 
@@ -107,8 +96,9 @@ class PSPnet(nn.Module):
             img (img): original image (including bounding box & 1 positive click feature maps)
             x (additional feature map): same size feature map of another positive click
         """
-        self.refinements.append(x)
-        return self.forward(img)
+        ...
+        # self.refinements.append(x)
+        # return self.forward(img)
 
 
     def add_refinement_map_train(self, refinment_maps):
