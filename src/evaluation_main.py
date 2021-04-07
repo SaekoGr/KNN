@@ -70,22 +70,23 @@ class EvaluationMetrics:
         #self.iou.append(iou.item())
 
     def getIoU(self):
-        #print(self.iou)
-        return np.sum(self.intersectionArea) / np.sum(self.unionArea) * 100
+        self.iou = np.sum(self.intersectionArea) / np.sum(self.unionArea) * 100
+        return self.iou
 
     def getDiceLoss(self):
-        #print(self.dice_loss)
-        return np.sum(2 * self.intersectionArea) / (np.sum(self.unionArea + self.intersectionArea)) * 100
+        self.dice_coeff = np.sum(2 * self.intersectionArea) / (np.sum(self.unionArea + self.intersectionArea)) * 100
+        return self.dice_coeff
 
     def getPixelAccuracy(self):
         if(self.pixel_total_sum > 0):
-            return ((self.pixel_acc_err) / self.pixel_total_sum * 100)
+            self.pixel_acc = ((self.pixel_acc_err) / self.pixel_total_sum * 100) 
         else:
-            return 0
+            self.pixel_acc = 0
+        return self.pixel_acc
 
-    def getEvaluation(self):
+    def getEvaluation(self, epoch_id):
         print("\n================================")
-        print("Evaluating model:")
+        print("Evaluating model for epoch " + str(epoch_id))
         print("Pixel accuracy " + str(round(self.getPixelAccuracy(), 2)) + "%")
         print("Intersection over union " + str(round(self.getIoU(), 2)) + "%")
         print("Dice coefficient " + str(round(self.getDiceLoss(), 2)) + "%")
@@ -140,8 +141,45 @@ def bbox(points):
 
     return (y_min, x_min, y_max, x_max)
 
+
+def evaluate(epoch_id, model, batch_size=4, min_res_size=16):
+    threshold=0.5
+    gen = batch_generator(batch_size, min_res_size, False)
+    batch_n = next(gen)
+
+    evalMetrics = EvaluationMetrics(batch_n)
+
+    model.zero_grad()
+
+    #s = perf_counter()
+    for n in range(batch_n):
+        X, y, _, bboxes = next(gen)
+
+        with torch.no_grad():
+            prediction = model(X)
+            prediction = (prediction.cuda()).detach().cpu().clone().numpy()
+
+        #print(prediction.shape)
+        thresholded_prediction = np.where(prediction >= threshold, 1.0, 0.0)
+        # calculate bounding boxes for thresholded prediction
+        prediction_bboxes = [bbox(thresholded_prediction[i][0]) for i in range(batch_size)]
+
+        # evaluate this batch
+        evalMetrics.evaluateBatch(y.cpu(), thresholded_prediction, bboxes, prediction_bboxes)
+
+        del X, y, bboxes, prediction
+
+        gc.collect()
+        torch.cuda.empty_cache()
+        loading(n+1, batch_n)
+
+    #print("total time = ", perf_counter() - s)
+    evalMetrics.getEvaluation(epoch_id)
+
+    return evalMetrics.pixel_acc, evalMetrics.iou, evalMetrics.dice_coeff
+
 if __name__ == "__main__":
-    batch_size = 6
+    batch_size = 4
     threshold = 0.5
 
     gen = batch_generator(batch_size, 16, False)
@@ -179,7 +217,7 @@ if __name__ == "__main__":
         torch.cuda.empty_cache()
         loading(n+1, batch_n)
         # uncomment for final product
-        #break
+        break
 
     print("total time = ", perf_counter() - s)
     evalMetrics.getEvaluation()

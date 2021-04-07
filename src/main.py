@@ -1,5 +1,6 @@
 from dataset import batch_generator, loading
 from model import PSPnet
+from evaluation_main import evaluate
 from torch import no_grad
 import torch
 import torch.nn.functional as F
@@ -24,6 +25,7 @@ loss_fce = F.binary_cross_entropy
 
 epoch_losses = []
 mean_epoch_losses = [] 
+accuracies = []
 
 
 # Run 100 epochs
@@ -55,10 +57,10 @@ for n in range(100):
 	mean_epoch_losses.append(np.asarray(epoch_losses).mean())
 
 	
-	# g_test = batch_generator(batch_size, min_res, False)
-	# with no_grad():
-	# 	acc = evaluate(m)
-	# 	accuracies.append(acc)
+	# evaluation
+	pixel_acc, iou, dice_coeff = evaluate(n, m, batch_size=4, min_res_size=16)
+	accuracies.append(iou)
+
 
 print("DONE!")
 
