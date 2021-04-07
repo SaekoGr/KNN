@@ -1,4 +1,4 @@
-from dataset import batch_generator, loading
+from dataset import batch_generator, loading, transI
 from model import IOGnet
 from evaluation_main import evaluate
 import torch
@@ -36,12 +36,14 @@ for n in range(100):
 	for n in range(batch_n):
 		X, y, refs, _ = next(g_train)
 		optimizer.zero_grad()
-		
+
 		# Add another click of user
 		m.add_refinement_map_train(refs)
 
 		# Predict result
 		y_pred = m(X)
+		# transI(y_pred[0]).show()
+		# input()
 
 		loss = loss_fce(y_pred, y)
 		acc = torch.sum(y_pred == y)
@@ -53,14 +55,30 @@ for n in range(100):
 		del y
 		torch.cuda.empty_cache()
 		loading(n+1, batch_n)
-
+		print(loss.item())
 		epoch_losses.append(loss.item())
 	mean_epoch_losses.append(np.asarray(epoch_losses).mean())
-
 	
 	# evaluation
 	pixel_acc, iou, dice_coeff = evaluate(n, m, batch_size=batch_size, min_res_size=16)
 	accuracies.append(iou)
+
+	torch.save({
+				'epoch': n,
+				'model_state_dict': m.state_dict(),
+				'optimizer_state_dict': optimizer.state_dict(),
+				'loss': loss,
+				'mean_loss' : mean_epoch_losses,
+				'pixel_acc' : pixel_acc,
+				'iou' : iou,
+				'dice_coeff' : dice_coeff
+				}, f"{model_path}{n}.json")
+	
+	print(f"iou accuracy of {n} model is {iou}")
+	if iou > best_model_acc:
+		print(f"New best model {n}.")
+		best_model_acc = iou
+		best_model_index = n
 
 
 print("DONE!")

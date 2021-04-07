@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import torch
-from model import PSPnet
+from model import IOGnet
 from dataset import batch_generator, loading
 import numpy as np
 import gc
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     threshold = 0.5
 
     gen = batch_generator(batch_size, 16, False)
-    model = PSPnet() # this will get loaded: load_model()
+    model = IOGnet() # this will get loaded: load_model()
     model.to(device)
 
     batch_n = next(gen)

@@ -59,7 +59,11 @@ class IOGnet(nn.Module):
 
         # refinement maps module
         if type(self.refinment_maps) != type(None):
-            refs = self.pool16(F.relu(nn.Conv2d(self.refinment_maps.shape[1], 1, 1)(self.refinment_maps))) # W/16 * H/16 * 1
+            if torch.cuda.is_available():
+                refs = self.pool16(F.relu(nn.Conv2d(self.refinment_maps.shape[1], 1, 1).cuda()(self.refinment_maps))) # W/16 * H/16 * 1
+            else:
+                refs = self.pool16(F.relu(nn.Conv2d(self.refinment_maps.shape[1], 1, 1)(self.refinment_maps))) # W/16 * H/16 * 1
+
             x4 = F.relu(self.conv_ref1(torch.cat((x3, refs), 1))) # W/16 * H/16 * 128
             x3 = F.relu(self.conv_ref2(torch.cat((x3, x4), 1))) # W/16 * H/16 * 128
 
@@ -83,7 +87,7 @@ class IOGnet(nn.Module):
             )
         ))
         x = F.relu(self.final_conv2(x))
-        y = F.softmax(self.final_conv3(x))
+        y = torch.heaviside(self.final_conv3(x))
         return y
 
 
