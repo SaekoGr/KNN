@@ -1,9 +1,7 @@
 from PIL import ImageTk, Image
 import torch
-import json
 import random
-from shapely.geometry import Polygon, Point
-import matplotlib.pyplot as plt
+from shapely.geometry import Point
 import numpy as np
 
 
@@ -31,8 +29,7 @@ def generate_clicks(siluet, bbox, other_clicks_num):
         other_clicks[i][int(point.y)][int(point.x)] = 1
 
     return click_map, other_clicks
-
-
+  
 def generate_b_map(siluet, bbox):
     border_map = torch.zeros_like(siluet)
     
@@ -55,7 +52,6 @@ def generate_b_map(siluet, bbox):
     border_map[0, y1:y2+1, x2] = 1
 
     return border_map
-
 
 def get_maps(x_batch, y_batch, bboxes):
     other_clicks_num = round(np.random.exponential())
