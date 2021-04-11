@@ -27,59 +27,56 @@ mean_epoch_losses = []
 accuracies = []
 model_path = "/content/gdrive/MyDrive/KNN/IOGnet.h5"
 
+g_train = batch_generator(16, 16,False,False)
+batch_n = next(g_train)
 
-# Run 100 epochs
 for n in range(100):
-	g_train = batch_generator(batch_size, min_res, False, False)
-	batch_n = next(g_train)
-	# First train model on dataset
-	for n in range(batch_n):
-		X, y, refs, _ = next(g_train)
-		optimizer.zero_grad()
+  epoch_losses = []
+  # First train model on dataset
+  for i in range(batch_n):
+    X, y, _ = next(g_train)
+    # print(X.shape)
+    optimizer.zero_grad()
 
-		# Add another click of user
-		m.add_refinement_map_train(refs)
+    # Predict result
+    y_pred = m(X)
 
-		# Predict result
-		y_pred = m(X)
-		# transI(y_pred[0]).show()
-		# input()
+    loss = loss_fce(y_pred, y)
+    loss.backward()
+    optimizer.step()
 
-		loss = loss_fce(y_pred, y)
-		acc = torch.sum(y_pred == y)
-		loss.backward()
-		optimizer.step()
+    del X
+    del y_pred
+    del y
+    torch.cuda.empty_cache()
+    loading(i+1, batch_n)
+    epoch_losses.append(loss.item())
+    print(loss.item())
+  mean_epoch_losses.append(np.asarray(epoch_losses).mean())
 
-		del X
-		del y_pred
-		del y
-		torch.cuda.empty_cache()
-		loading(n+1, batch_n)
-		print(loss.item())
-		epoch_losses.append(loss.item())
-	mean_epoch_losses.append(np.asarray(epoch_losses).mean())
-	
-	# evaluation
-	pixel_acc, iou, dice_coeff = evaluate(n, m, batch_size=batch_size, min_res_size=16)
-	accuracies.append(iou)
+  # evaluation
+  pixel_acc, iou, dice_coeff = evaluate(n, m, batch_size=round(batch_size*1.5), min_res_size=16)
+  accuracies.append(iou)
 
-	torch.save({
-				'epoch': n,
-				'model_state_dict': m.state_dict(),
-				'optimizer_state_dict': optimizer.state_dict(),
-				'loss': loss,
-				'mean_loss' : mean_epoch_losses,
-				'pixel_acc' : pixel_acc,
-				'iou' : iou,
-				'dice_coeff' : dice_coeff
-				}, f"{model_path}{n}.json")
-	
-	print(f"iou accuracy of {n} model is {iou}")
-	if iou > best_model_acc:
-		print(f"New best model {n}.")
-		best_model_acc = iou
-		best_model_index = n
-
+  torch.save({
+        'epoch': n,
+        'model_state_dict': m.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss,
+        'mean_loss' : mean_epoch_losses,
+        'pixel_acc' : pixel_acc,
+        'iou' : iou,
+        'dice_coeff' : dice_coeff
+        }, f"{model_path}{n}.json")
+  
+  print(f"iou accuracy of number {n} is {iou}")
+  if iou > best_model_acc:
+    print(f"New best model is number {n}.")
+    with open("/content/gdrive/MyDrive/KNN/Model/best_index.txt", "w") as fd:
+      fd.write(str(best_model_index))
+    best_model_acc = iou
+    best_model_index = n
+    
+  print(f"best model is {best_model_index}")
 
 print("DONE!")
-
