@@ -8,3 +8,4 @@ test3.py
 test-photo.*
 data/
 model/
+*/test*

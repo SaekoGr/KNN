@@ -27,7 +27,7 @@ mean_epoch_losses = []
 accuracies = []
 model_path = "/content/gdrive/MyDrive/KNN/IOGnet.h5"
 
-g_train = batch_generator(16, 16,False,False)
+g_train = batch_generator(batch_size, min_res ,False, False)
 batch_n = next(g_train)
 
 for n in range(100):

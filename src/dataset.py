@@ -104,7 +104,7 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
   x_batch = []
   y_batch = []
   new_bboxes = []
-  max_res_size = 64
+  max_res_size = 128
   margin = 15
   while True:
     shuffle(annotation)
@@ -211,22 +211,22 @@ def loading(i, margin):
   print("[{}{}] {:.2f} %".format("*" * int(dec), "_" * int(10-dec), dec * 10), end="\r")
 
 if __name__ == "__main__":
-    batch_size = 16
+    batch_size = 5
     min_res_size = 16
     gen = batch_generator(batch_size, min_res_size, False, False)
     l = next(gen)
-    # print(l)
-    # for X, y, _, _ in gen:
-    #     print(X.shape)
-    #     input()
+    print(l)
+    for X, y, _, in gen:
+        print(X.shape)
+        input()
 
-    from time import perf_counter
-    s = perf_counter()
-    for i in range(l):
-    	_ = next(gen)
-    	loading(i+1, l)
+    # from time import perf_counter
+    # s = perf_counter()
+    # for i in range(l):
+    # 	_ = next(gen)
+    # 	loading(i+1, l)
 
-    print("Total time of run is: ", perf_counter() - s)
+    # print("Total time of run is: ", perf_counter() - s)
 
 
 

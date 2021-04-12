@@ -1,13 +1,14 @@
 import torch
 from model import IOGnet
-from dataset import batch_generator, transI
+from dataset import batch_generator
 from matplotlib import pyplot as plt
-import numpy as np
 
 m = IOGnet()
-path = "../model/IOGnet2_8.json"
+path = "../model/IOGnet_2.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
+print(checkpoint["mean_loss"])
+print(checkpoint["iou"])
 
 # print(checkpoint["mean_loss"])
 g = batch_generator(1, 16,False, False)
@@ -48,7 +49,7 @@ for i in range(5):
     axs[i, 4].imshow(pred_y)
     axs[i, 5].imshow(pred_y_th)
 
-plt.tight_layout(pad=1.0, h_pad=1.0)
+plt.tight_layout(pad=0.3, h_pad=0.3)
 plt.show()
 
 
