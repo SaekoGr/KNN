@@ -36,9 +36,10 @@ class IOGnet(nn.Module):
         self.final_conv5 = nn.Conv2d(516, 256, 3, padding=1, dilation=1)
         self.final_conv6 = nn.Conv2d(256, 64, 3, padding=1, dilation=1)
         self.final_conv7 = nn.Conv2d(256, 64, 3, padding=1, dilation=1)
-        self.final_conv8 = nn.Conv2d(384, 128, 3, padding=1, dilation=1)
-        self.final_conv9 = nn.Conv2d(128, 64, 3, padding=1, dilation=1)
-        self.final_conv10 = nn.Conv2d(64, 1, 1)
+        self.final_conv8 = nn.Conv2d(384, 516, 3, padding=1, dilation=1)
+        self.final_conv9 = nn.Conv2d(516, 128, 3, padding=1, dilation=1)
+        self.final_conv10 = nn.Conv2d(128, 32, 3, padding=1, dilation=1)
+        self.final_conv11 = nn.Conv2d(32, 1, 1)
 
     def forward(self, x):
         """Function for evaluating input data.
@@ -124,9 +125,6 @@ class IOGnet(nn.Module):
             )
         ))
         x = F.relu(self.final_conv9(x))
-        x = torch.sigmoid(self.final_conv10(x))
+        x = F.relu(self.final_conv10(x))
+        x = torch.sigmoid(self.final_conv11(x))
         return x
-
-
-
-    

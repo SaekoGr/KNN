@@ -4,11 +4,14 @@ from dataset import batch_generator
 from matplotlib import pyplot as plt
 
 m = IOGnet()
-path = "../model/IOGnet_2.json"
+path = "../model/IOGnet_final_12.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
 print(checkpoint["mean_loss"])
 print(checkpoint["iou"])
+print(checkpoint["pixel_acc"])
+print(checkpoint["dice_coeff"])
+
 
 # print(checkpoint["mean_loss"])
 g = batch_generator(1, 16,False, False)

@@ -52,7 +52,7 @@ def generate_b_map(siluet, bbox):
     return border_map
 
 def get_maps(x_batch, y_batch, bboxes):
-    clicks_num = round(np.random.exponential()) + 1
+    clicks_num = round(np.random.exponential(0.3)) + 1
     click_maps = []
     b_maps = []
 
