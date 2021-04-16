@@ -5,19 +5,51 @@ from shapely.geometry import Point
 import numpy as np
 
 
+def check_siluet_borders(siluet, x, y, size_dec_x, size_dec_y):
+    valid_pixels_cnt = 0.0
+
+    # LEFT
+    if x-size_dec_x > 0 and y-size_dec_y > 0 and y+size_dec_y < siluet.shape[0]:
+        valid_pixels_cnt += torch.sum(siluet[y-size_dec_y : y+size_dec_y, x-size_dec_x])
+
+    # RIGHT
+    if x-size_dec_x < siluet.shape[1] and y-size_dec_y > 0 and y+size_dec_y < siluet.shape[0]:
+        valid_pixels_cnt += torch.sum(siluet[y-size_dec_y : y+size_dec_y, x+size_dec_x])
+
+    # TOP
+    if x-size_dec_x > 0 and x+size_dec_x < siluet.shape[1] and y-size_dec_y > 0:
+        valid_pixels_cnt += torch.sum(siluet[y-size_dec_y, x-size_dec_x : x+size_dec_x])
+
+    # RIGHT
+    if x-size_dec_x > 0 and x+size_dec_x < siluet.shape[1] and y-size_dec_y < siluet.shape[0]:
+        valid_pixels_cnt += torch.sum(siluet[y+size_dec_y, x-size_dec_x : x+size_dec_x])
+
+    checked_pixels_cnt = 2*size_dec_x + 2* size_dec_y
+
+    if valid_pixels_cnt / checked_pixels_cnt > 0.95:
+        return True
+
+    return False
+
+
+
 def generate_clicks(siluet, bbox, other_clicks_num):
     clicks_num = 1+other_clicks_num
     clicks_points = []
     clicks_map = torch.zeros_like(siluet)
 
+    bbox_dec_size_x = int((bbox[2] - bbox[0]) * 0.05) 
+    bbox_dec_size_y = int((bbox[3] - bbox[1]) * 0.05) 
+
     # generate clicks with MonteCarlo method
     for i in range(100):
-        random_x = random.randint(int(bbox[0]), int(bbox[2])-1)
-        random_y = random.randint(int(bbox[1]), int(bbox[3])-1)
+        random_x = random.randint(int(bbox[0] + bbox_dec_size_x), int(bbox[2] - bbox_dec_size_x)-1)
+        random_y = random.randint(int(bbox[1] + bbox_dec_size_y), int(bbox[3] - bbox_dec_size_y)-1)
 
-        if siluet[0][random_y][random_x] == 1:            
-            clicks_points.append(Point(random_x, random_y))  
-            clicks_num -= 1
+        if siluet[0][random_y][random_x] == 1:    
+            if check_siluet_borders(siluet[0], random_x, random_y, bbox_dec_size_x, bbox_dec_size_y):      
+                clicks_points.append(Point(random_x, random_y))  
+                clicks_num -= 1
         
         if clicks_num == 0:
             break
@@ -68,4 +100,4 @@ def get_maps(x_batch, y_batch, bboxes):
     click_maps = torch.stack(click_maps)
     b_maps = torch.stack(b_maps)
 
-    return torch.hstack((x_batch, b_maps, click_maps))
+    return torch.hstack((x_batch, b_maps, click_maps)), b_maps
