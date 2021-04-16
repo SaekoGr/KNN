@@ -104,7 +104,7 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
   x_batch = []
   y_batch = []
   new_bboxes = []
-  max_res_size = 128
+  max_res_size = 64
   margin = 15
   while True:
     shuffle(annotation)

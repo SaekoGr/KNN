@@ -7,26 +7,30 @@ import numpy as np
 
 def check_siluet_borders(siluet, x, y, size_dec_x, size_dec_y):
     valid_pixels_cnt = 0.0
+    x_var_sub = x-size_dec_x
+    x_var_add = x+size_dec_x
+    y_var_sub = y-size_dec_y
+    y_var_add = y+size_dec_y
 
     # LEFT
-    if x-size_dec_x > 0 and y-size_dec_y > 0 and y+size_dec_y < siluet.shape[0]:
-        valid_pixels_cnt += torch.sum(siluet[y-size_dec_y : y+size_dec_y, x-size_dec_x])
+    if x_var_sub > 0 and y_var_sub > 0 and y_var_add < siluet.shape[0]:
+        valid_pixels_cnt += torch.sum(siluet[y_var_sub : y_var_add, x_var_sub])
 
     # RIGHT
-    if x-size_dec_x < siluet.shape[1] and y-size_dec_y > 0 and y+size_dec_y < siluet.shape[0]:
-        valid_pixels_cnt += torch.sum(siluet[y-size_dec_y : y+size_dec_y, x+size_dec_x])
+    if x_var_sub < siluet.shape[1] and y_var_sub > 0 and y_var_add < siluet.shape[0]:
+        valid_pixels_cnt += torch.sum(siluet[y_var_sub : y_var_add, x_var_add])
 
     # TOP
-    if x-size_dec_x > 0 and x+size_dec_x < siluet.shape[1] and y-size_dec_y > 0:
-        valid_pixels_cnt += torch.sum(siluet[y-size_dec_y, x-size_dec_x : x+size_dec_x])
+    if x_var_sub > 0 and x_var_add < siluet.shape[1] and y_var_sub > 0:
+        valid_pixels_cnt += torch.sum(siluet[y_var_sub, x_var_sub : x_var_add])
 
-    # RIGHT
-    if x-size_dec_x > 0 and x+size_dec_x < siluet.shape[1] and y-size_dec_y < siluet.shape[0]:
-        valid_pixels_cnt += torch.sum(siluet[y+size_dec_y, x-size_dec_x : x+size_dec_x])
+    # BOTTOM
+    if x_var_sub > 0 and x_var_add < siluet.shape[1] and y_var_sub < siluet.shape[0]:
+        valid_pixels_cnt += torch.sum(siluet[y+size_dec_y, x_var_sub : x_var_add])
 
-    checked_pixels_cnt = 2*size_dec_x + 2* size_dec_y
+    checked_pixels_cnt = 2*size_dec_x + 2*size_dec_y
 
-    if valid_pixels_cnt / checked_pixels_cnt > 0.95:
+    if np.divide(valid_pixels_cnt, checked_pixels_cnt) > 0.95:
         return True
 
     return False
