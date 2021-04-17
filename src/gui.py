@@ -1,18 +1,22 @@
 import tkinter as tk
 from tkinter.filedialog import askopenfilename
 from PIL import ImageTk,Image 
+from shapely.geometry import Point
+from torchvision import transforms
+import matplotlib.pyplot as plt
+import torch
+
 
 img_file_name = ""
-
+points = []
+points_circles = []
+borders = []
 
 # TK initialize ----------
 window = tk.Tk(className="GST Interactive Segmentation")
 window.geometry("600x50")
 # TK initialize end ------
 
-def do_clicks():
-    global window
-    global img_canvas
 
 
 def choose_file():
@@ -42,16 +46,103 @@ def choose_file():
     # create image
     img_canvas.create_image(img1.width()/2, img1.height()/2, image=img1)
 
-    do_clicks()
-
-
 
 def reset_clicks():
-    pass
+    global img_canvas
+    global points_circles
+    global points
+
+    for x in points_circles:
+        img_canvas.delete(x)
+
+    points = []
 
 
 def do_segmentation():
+    global img_file_name
+    global points
+    global borders
+
+    img = Image.open(img_file_name).convert("RGB")
+    trans = transforms.ToTensor()
+    tensor = trans(img)
+
+
+    # CREATE CLICKS MAP
+    clicks_map = torch.zeros_like(tensor[0])
+
+    for point in points:
+        clicks_map[int(point.y), int(point.x)] = 1
+
+
+    # CREATE BORDER MAP
+    border_map = torch.zeros_like(tensor[0])
+    x1 = int(borders[0].x)
+    y1 = int(borders[0].y)
+    x2 = int(borders[1].x)
+    y2 = int(borders[1].y)
+
+    print(border_map.shape)
+    print(x1, y1, x2, y2)
+
+
+    # top
+    border_map[y1, x1:x2+1:] = 1
+    # bottom
+    border_map[y2, x1:x2+1:] = 1
+    # left
+    border_map[y1:y2+1:, x1] = 1
+    # right
+    border_map[y1:y2+1, x2] = 1
+    
+
+
     pass
+
+
+def add_click(event):
+    global img_canvas
+    global points
+    global points_circles
+
+    points_circles.append(img_canvas.create_oval(event.x-3, event.y-3, event.x+3, event.y+3, fill='blue', outline='red', width=2))
+    points.append(Point(event.x, event.y))
+
+
+def add_border(event):
+    global img_canvas
+    global borders
+    global borders_rectangle
+
+    print(event.x, event.y)
+
+    if len(borders) < 2:
+        borders.append(Point(event.x, event.y))
+    else:
+        borders = []
+        borders.append(Point(event.x, event.y))
+
+    if len(borders) == 2:
+        try:
+            img_canvas.delete(borders_rectangle)
+        except NameError:
+            pass
+
+        borders_rectangle = img_canvas.create_rectangle(borders[0].x, borders[0].y, borders[1].x, borders[1].y, outline='blue', width=2)
+
+
+def motion(event):
+    global img_canvas
+    global borders
+    global borders_rectangle
+
+    if len(borders) == 1:
+        try:
+            img_canvas.delete(borders_rectangle)
+        except NameError:
+            pass
+
+        borders_rectangle = img_canvas.create_rectangle(borders[0].x, borders[0].y, event.x, event.y, outline='blue', width=2)
 
 
 
@@ -71,14 +162,17 @@ img_canvas = tk.Canvas(width=10, height=10, bg='black')
 img_canvas.grid(row=1, column=0, columnspan=3)
 
 # MOUSE BUTTONS BIND ------
-canvas.bind("<Button-1>", callback)
+img_canvas.bind("<Button-1>", add_click)
+img_canvas.bind("<Button-3>", add_border)
+img_canvas.bind("<Motion>", motion)
 
 
 
-
+# SET EXPANDING SIZE TO BUTTONS DUE TO WINDOW SIZE
 for x in range(3):
     tk.Grid.columnconfigure(window, x, weight=1)
 
 tk.Grid.rowconfigure(window, 0, minsize=50)
+# -------
 
 window.mainloop()
