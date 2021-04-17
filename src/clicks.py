@@ -30,10 +30,8 @@ def check_siluet_borders(siluet, x, y, size_dec_x, size_dec_y):
 
     checked_pixels_cnt = 2*size_dec_x + 2*size_dec_y
 
-    if np.divide(valid_pixels_cnt, checked_pixels_cnt) > 0.95:
-        return True
+    return torch.divide(valid_pixels_cnt, checked_pixels_cnt) > 0.95
 
-    return False
 
 
 
@@ -42,11 +40,11 @@ def generate_clicks(siluet, bbox, other_clicks_num):
     clicks_points = []
     clicks_map = torch.zeros_like(siluet)
 
-    bbox_dec_size_x = int((bbox[2] - bbox[0]) * 0.05) 
-    bbox_dec_size_y = int((bbox[3] - bbox[1]) * 0.05) 
+    bbox_dec_size_x = int((bbox[2] - bbox[0]) * 0.2) 
+    bbox_dec_size_y = int((bbox[3] - bbox[1]) * 0.2) 
 
     # generate clicks with MonteCarlo method
-    for i in range(100):
+    for _ in range(100):
         random_x = random.randint(int(bbox[0] + bbox_dec_size_x), int(bbox[2] - bbox_dec_size_x)-1)
         random_y = random.randint(int(bbox[1] + bbox_dec_size_y), int(bbox[3] - bbox_dec_size_y)-1)
 
@@ -59,7 +57,7 @@ def generate_clicks(siluet, bbox, other_clicks_num):
             break
 
     # other clicks
-    for i, point in enumerate(clicks_points):
+    for point in clicks_points:
         clicks_map[0][int(point.y)][int(point.x)] = 1
 
     return clicks_map
@@ -88,7 +86,7 @@ def generate_b_map(siluet, bbox):
     return border_map
 
 def get_maps(x_batch, y_batch, bboxes):
-    clicks_num = round(np.random.exponential(0.3)) + 1
+    clicks_num = round(np.random.exponential(0.3))
     click_maps = []
     b_maps = []
 
@@ -104,4 +102,4 @@ def get_maps(x_batch, y_batch, bboxes):
     click_maps = torch.stack(click_maps)
     b_maps = torch.stack(b_maps)
 
-    return torch.hstack((x_batch, b_maps, click_maps)), b_maps
+    return torch.hstack((x_batch, b_maps, click_maps))
