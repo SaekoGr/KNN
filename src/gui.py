@@ -4,6 +4,7 @@ from PIL import ImageTk,Image
 from shapely.geometry import Point
 from torchvision import transforms
 import torch
+import numpy as np
 from model import IOGnet
 
 img_file_name = ""
@@ -16,14 +17,18 @@ window = tk.Tk(className="GST Interactive Segmentation")
 window.geometry("600x50")
 # TK initialize end ------
 
+
+# MODEL -------
 m = IOGnet()
-path = "../model/IOGnet_final_bn7.json"
+path = "/home/adrian/skola/2sem/knn/proj/IOGnet_final_bn8.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
+# -------------
 
 
 def choose_file():
-    global img_file_name 
+    global img_file_name
+    global img_opened 
     global img_canvas
     global img1
     global window
@@ -34,20 +39,20 @@ def choose_file():
 
     # show image
     try:
-        tmp_img_load = Image.open(img_file_name)
+        img_opened = Image.open(img_file_name)
     except AttributeError:
         return
     
     # resize if needed
-    x = tmp_img_load.width
-    y = tmp_img_load.height
+    x = img_opened.width
+    y = img_opened.height
     if  x > 1500 or y > 1500:
         resize_ratio = 1500 / max(x, y)
         x = int(x * resize_ratio)
         y = int(y * resize_ratio)
-        tmp_img_load = tmp_img_load.resize((x, y), Image.ANTIALIAS)
+        img_opened = img_opened.resize((x, y), Image.ANTIALIAS)
 
-    img1 = ImageTk.PhotoImage(tmp_img_load)
+    img1 = ImageTk.PhotoImage(img_opened)
 
     # adapt window size to the image size
     window.update()
@@ -74,10 +79,11 @@ def reset_clicks():
 
 def do_segmentation():
     global img_file_name
+    global img_opened
     global points
     global borders
 
-    img = Image.open(img_file_name).convert("RGB")
+    img = img_opened.convert("RGB")
     trans = transforms.ToTensor()
     tensor = trans(img)
 
@@ -103,7 +109,6 @@ def do_segmentation():
     if y1 > y2:
         y1, y2 = y2, y1
 
-
     # top
     border_map[y1, x1:x2+1:] = 1
     # bottom
@@ -114,11 +119,67 @@ def do_segmentation():
     border_map[y1:y2+1, x2] = 1
     
     input = torch.unsqueeze(torch.vstack((tensor, clicks_map[None, :, : ], border_map[None, :, : ])), 0)
+    
+    
+    # CROP input by BBox
+    pow2 = [pow(2, x) for x in range(4, 15)]
+
+    x_range_old = x2 - x1
+    y_range_old = y2 - y1
+    x_range_new = 0
+    y_range_new = 0
+
+    if x_range_old not in pow2:
+        tmp = np.searchsorted(pow2,[x_range_old,],side='right')[0]
+        x_range_new = pow2[tmp] - x_range_old
+
+    if y_range_old not in pow2:
+        tmp = np.searchsorted(pow2,[y_range_old,],side='right')[0]
+        y_range_new = pow2[tmp] - y_range_old
+
+    # Add padding to get pow2 shape
+    # X1
+    if x1 - x_range_new / 2 < 0:
+        x_range_new -= x1
+        x1 = 0
+    else:
+        x1 -= x_range_new / 2
+        x_range_new /= 2
+
+    # X2
+    x2 += x_range_new
+
+    # Y1
+    if y1 - y_range_new / 2 < 0:
+        y_range_new -= y1
+        y1 = 0
+    else:
+        y1 -= y_range_new / 2
+        y_range_new /= 2
+
+    # X2
+    y2 += y_range_new
+    # -----------------------
+
+    x1 = int(x1)
+    y1 = int(y1)
+    x2 = int(x2)
+    y2 = int(y2)
+
+    # reshape img tensor - add black padding
+    src_shape = input.shape
+    target = torch.zeros(src_shape[0], src_shape[1], 2048, 2048)
+    
+    target[:, :, :src_shape[2], :src_shape[3]] = input
+
+    input = target[:, :, y1:y2, x1:x2]
+    print(input.shape)
+
 
     with torch.no_grad():
         pred_y = m(input)
-        # TODO
-
+        
+        print(pred_y)
 
     pass
 
