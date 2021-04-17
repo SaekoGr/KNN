@@ -1,10 +1,11 @@
+import numpy as np
 import torch
 from model import IOGnet
 from dataset import batch_generator
 from matplotlib import pyplot as plt
 
 m = IOGnet()
-path = "../model/IOGnet_final_bn3.json"
+path = "../model/IOGnet_final_bn7.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
 print(checkpoint["mean_loss"])
@@ -12,7 +13,7 @@ print(checkpoint["iou"])
 print(checkpoint["pixel_acc"])
 print(checkpoint["dice_coeff"])
 
-
+# m.eval()
 # print(checkpoint["mean_loss"])
 g = batch_generator(1, 16,False, False)
 print("batch_n = ", next(g))
@@ -34,6 +35,7 @@ axs[0, 5].set_title('threshold')
 for i in range(5):
 
     X, y, _ = next(g)
+    # print(np.array(X).shape)
     with torch.no_grad():
         pred_y = m(X)
     

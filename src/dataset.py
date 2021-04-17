@@ -4,7 +4,6 @@ from random import shuffle
 from torchvision import transforms
 import numpy as np
 from PIL import Image, ImageDraw
-import psutil
 from math import ceil
 from clicks import get_maps
 from copy import deepcopy
@@ -13,22 +12,6 @@ from copy import deepcopy
 
 trans = transforms.ToTensor()
 transI = transforms.ToPILImage()
-
-def parse_run_encoding(img, coding):
-    print("PARSING RUN ENCODING")
-    isWhite = False
-    index = 0
-
-    a = np.zeros(np.prod(img.size), dtype="uint8")
-    for n in coding:
-        if isWhite:
-            a[index:index+n] = 255
-        index += n
-        isWhite = not isWhite
-    a = np.reshape(a, img.size[::-1])
-
-    return Image.fromarray(a)
-
 
 def generate_y(x, segmentation):
     # y = Image.fromarray(np.zeros((x.size), dtype="uint8"))
@@ -45,18 +28,6 @@ def generate_y(x, segmentation):
             draw.polygon(polygon, outline=255, fill=255)
 
     return y
-
-def load_images(annotation, folder):
-  print("loading images into RAM")
-  images = {}
-  l = len(annotation)
-  for i, img_obj in enumerate(annotation):
-    if img_obj["file_name"] not in images:
-      images[img_obj["file_name"]] = Image.open(os.path.join(folder, img_obj["file_name"])).convert("RGB")
-    loading(i+1, l)
-  return images
-
-
 
 def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
   """Batch generator for training&testing data.
@@ -197,10 +168,7 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
         if CUDA:
           x_batch, y_batch = x_batch.cuda(), y_batch.cuda()
 
-        if isTrain:
-          yield x_batch, y_batch, None
-        else:
-          yield x_batch, y_batch, new_bboxes
+        yield x_batch, y_batch, new_bboxes
         del batch_pool[(w,h)]
         x_batch, y_batch = [], []
         new_bboxes = []
