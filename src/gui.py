@@ -5,7 +5,7 @@ from shapely.geometry import Point
 from torchvision import transforms
 import matplotlib.pyplot as plt
 import torch
-
+from model import IOGnet
 
 img_file_name = ""
 points = []
@@ -17,6 +17,10 @@ window = tk.Tk(className="GST Interactive Segmentation")
 window.geometry("600x50")
 # TK initialize end ------
 
+m = IOGnet()
+path = "../model/IOGnet_final_bn7.json"
+checkpoint = torch.load(path, map_location=torch.device('cpu'))
+m.load_state_dict(checkpoint['model_state_dict'])
 
 
 def choose_file():
@@ -95,6 +99,11 @@ def do_segmentation():
     # right
     border_map[y1:y2+1, x2] = 1
     
+    input = torch.unsqueeze(torch.vstack((tensor, clicks_map[None, :, : ], border_map[None, :, : ])), 0)
+
+    with torch.no_grad():
+        pred_y = m(input)
+        # TODO
 
 
     pass
