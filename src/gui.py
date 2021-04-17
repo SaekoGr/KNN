@@ -3,6 +3,7 @@ from tkinter.filedialog import askopenfilename
 from PIL import ImageTk,Image 
 from shapely.geometry import Point
 from torchvision import transforms
+import matplotlib.pyplot as plt
 import torch
 from model import IOGnet
 
@@ -34,20 +35,9 @@ def choose_file():
 
     # show image
     try:
-        tmp_img_load = Image.open(img_file_name)
+        img1 = ImageTk.PhotoImage(Image.open(img_file_name))
     except AttributeError:
         return
-    
-    # resize if needed
-    x = tmp_img_load.width
-    y = tmp_img_load.height
-    if  x > 1500 or y > 1500:
-        resize_ratio = 1500 / max(x, y)
-        x = int(x * resize_ratio)
-        y = int(y * resize_ratio)
-        tmp_img_load = tmp_img_load.resize((x, y), Image.ANTIALIAS)
-
-    img1 = ImageTk.PhotoImage(tmp_img_load)
 
     # adapt window size to the image size
     window.update()
@@ -96,12 +86,8 @@ def do_segmentation():
     x2 = int(borders[1].x)
     y2 = int(borders[1].y)
 
-    # Swap to make borders from Left Top to Right Bottom
-    if x1 > x2:
-        x1, x2 = x2, x1
-    
-    if y1 > y2:
-        y1, y2 = y2, y1
+    print(border_map.shape)
+    print(x1, y1, x2, y2)
 
 
     # top
@@ -117,8 +103,8 @@ def do_segmentation():
 
     with torch.no_grad():
         pred_y = m(input)
-        # TODO
-
+    
+    pred_y = (pred_y>0.5).float()
 
     pass
 
@@ -137,6 +123,7 @@ def add_border(event):
     global borders
     global borders_rectangle
 
+    print(event.x, event.y)
 
     if len(borders) < 2:
         borders.append(Point(event.x, event.y))
