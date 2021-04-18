@@ -113,9 +113,9 @@ def do_segmentation():
     # right
     border_map[y1:y2+1, x2] = 1
     
-    input = torch.unsqueeze(torch.vstack((tensor, clicks_map[None, :, : ], border_map[None, :, : ])), 0)
-    
-    
+    input = torch.unsqueeze(torch.vstack((tensor, border_map[None, :, : ], clicks_map[None, :, : ])), 0)
+
+
     # CROP input by BBox
     pow2 = [pow(2, x) for x in range(4, 15)]
 
@@ -183,10 +183,7 @@ def do_segmentation():
     # create mask
     mask = torch.zeros_like(tensor[0])
 
-    # create 3 channel (RGB) tensor of segmentation output
     pred_y = torch.squeeze(pred_y)
-    # pred_y = torch.stack((pred_y, pred_y, pred_y))
-    print(mask.shape, pred_y.shape)
 
     mask[y1:y2, x1:x2] = pred_y
     img_plot = plt.imshow(mask)
@@ -200,8 +197,6 @@ def do_segmentation():
 
     res_image = tensor * mask
 
-    print(res_image)
-
 
     # FINAL RESULT IMAGE
     trans = transforms.ToPILImage()
@@ -214,7 +209,6 @@ def do_segmentation():
 
     # img_canvas.delete("all")
     # img_canvas.create_image(img1.width()/2, img1.height()/2, image=image)
-    print("hura")
 
     pass
 
