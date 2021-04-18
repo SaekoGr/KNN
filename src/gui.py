@@ -13,6 +13,7 @@ img_file_name = ""
 points = []
 points_circles = []
 borders = []
+transI = transforms.ToPILImage()
 
 # TK initialize ----------
 window = tk.Tk(className="GST Interactive Segmentation")
@@ -23,8 +24,10 @@ window.geometry("600x50")
 # MODEL -------
 m = IOGnet()
 path = "/home/adrian/skola/2sem/knn/proj/IOGnet_final_bn8.json"
+# path = "../model/IOGnet_final_bn7.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
+# m = m.eval()
 # -------------
 
 
@@ -104,6 +107,12 @@ def do_segmentation():
     x2 = int(borders[1].x)
     y2 = int(borders[1].y)
 
+    if x1 > x2:
+        x1, x2 = x2, x1
+    
+    if y1 > y2:
+        y1, y2 = y2, y1
+
     # top
     border_map[y1, x1:x2+1:] = 1
     # bottom
@@ -113,104 +122,46 @@ def do_segmentation():
     # right
     border_map[y1:y2+1, x2] = 1
     
+    x_pad = (16 - ((x2-x1) % 16)) / 2
+    y_pad = (16 - ((y2-y1) % 16)) / 2
+
+    # FIXME možný problém, pokud by už nebyli pixely na krajích
+    x1 -= int(np.floor(x_pad))
+    x2 += int(np.ceil(x_pad))
+    y1 -= int(np.floor(y_pad))
+    y2 += int(np.ceil(y_pad))
+
+
     input = torch.unsqueeze(torch.vstack((tensor, border_map[None, :, : ], clicks_map[None, :, : ])), 0)
+    input = input[:,:,y1:y2,x1:x2]
 
-
-    # CROP input by BBox
-    pow2 = [pow(2, x) for x in range(4, 15)]
-
-    x_range_old = x2 - x1
-    y_range_old = y2 - y1
-    x_range_new = 0
-    y_range_new = 0
-
-    if x_range_old not in pow2:
-        tmp = np.searchsorted(pow2,[x_range_old,],side='right')[0]
-        x_range_new = pow2[tmp] - x_range_old
-
-    if y_range_old not in pow2:
-        tmp = np.searchsorted(pow2,[y_range_old,],side='right')[0]
-        y_range_new = pow2[tmp] - y_range_old
-
-    # Add padding to get pow2 shape
-    # X1
-    if x1 - x_range_new / 2 < 0:
-        x_range_new -= x1
-        x1 = 0
-    else:
-        x1 -= x_range_new / 2
-        x_range_new /= 2
-
-    # X2
-    x2 += x_range_new
-
-    # Y1
-    if y1 - y_range_new / 2 < 0:
-        y_range_new -= y1
-        y1 = 0
-    else:
-        y1 -= y_range_new / 2
-        y_range_new /= 2
-
-    # X2
-    y2 += y_range_new
-    # -----------------------
-
-    x1 = int(x1)
-    y1 = int(y1)
-    x2 = int(x2)
-    y2 = int(y2)
-
-    # reshape img tensor - add black padding
-    src_shape = input.shape
-    target = torch.zeros(src_shape[0], src_shape[1], 2048, 2048)
-    
-    target[:, :, :src_shape[2], :src_shape[3]] = input
-
-    input = target[:, :, y1:y2, x1:x2]
-
-    # DO A SEGMENTATION ----
     with torch.no_grad():
-        pred_y = m(input)
-
+        y_pred = m(input)
     # Threshold
-    pred_y = (pred_y>0.5).float()
-    img_plot = plt.imshow(pred_y[0,0,:,:])
-    plt.show()
-    # -------------------------
-
+    y_pred = (y_pred>0.5).float()
 
     # create mask
     mask = torch.zeros_like(tensor[0])
 
-    pred_y = torch.squeeze(pred_y)
+    # create 3 channel (RGB) tensor of segmentation output
+    pred_y = torch.squeeze(y_pred)
 
     mask[y1:y2, x1:x2] = pred_y
-    img_plot = plt.imshow(mask)
-    #plt.show()
 
-    mask = mask + 1
-    mask = mask / 2
+    red_mask = torch.where(mask == 0, 0.3, 1.3)
+
+    mask = torch.where(mask == 0, 0.3, 1.0)
 
     # create 3 channel (RGB) mask
-    mask = torch.stack((mask, mask, mask))
-
+    mask = torch.stack((red_mask, mask, mask))
     res_image = tensor * mask
 
-
     # FINAL RESULT IMAGE
-    trans = transforms.ToPILImage()
-    image = trans(res_image)
+    image = transI(res_image)
 
-    img_plot = plt.imshow(image)
+    plt.imshow(image)
     plt.show()
 
-    # image = ImageTk.PhotoImage(trans)
-
-    # img_canvas.delete("all")
-    # img_canvas.create_image(img1.width()/2, img1.height()/2, image=image)
-
-    pass
 
 
 def add_click(event):
