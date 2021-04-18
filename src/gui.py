@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 from model import IOGnet
+import matplotlib.pyplot as plt
 
 img_file_name = ""
 points = []
@@ -47,8 +48,8 @@ def choose_file():
     # resize if needed
     x = img_opened.width
     y = img_opened.height
-    if  x > 1500 or y > 1500:
-        resize_ratio = 1500 / max(x, y)
+    if  x > 1000 or y > 1000:
+        resize_ratio = 1000 / max(x, y)
         x = int(x * resize_ratio)
         y = int(y * resize_ratio)
         img_opened = img_opened.resize((x, y), Image.ANTIALIAS)
@@ -102,9 +103,6 @@ def do_segmentation():
     y1 = int(borders[0].y)
     x2 = int(borders[1].x)
     y2 = int(borders[1].y)
-
-    print(border_map.shape)
-    print(x1, y1, x2, y2)
 
     # top
     border_map[y1, x1:x2+1:] = 1
@@ -170,13 +168,53 @@ def do_segmentation():
     target[:, :, :src_shape[2], :src_shape[3]] = input
 
     input = target[:, :, y1:y2, x1:x2]
-    print(input.shape)
 
-
+    # DO A SEGMENTATION ----
     with torch.no_grad():
         pred_y = m(input)
-    
+
+    # Threshold
     pred_y = (pred_y>0.5).float()
+    img_plot = plt.imshow(pred_y[0,0,:,:])
+    plt.show()
+    # -------------------------
+
+
+    # create mask
+    mask = torch.zeros_like(tensor[0])
+
+    # create 3 channel (RGB) tensor of segmentation output
+    pred_y = torch.squeeze(pred_y)
+    # pred_y = torch.stack((pred_y, pred_y, pred_y))
+    print(mask.shape, pred_y.shape)
+
+    mask[y1:y2, x1:x2] = pred_y
+    img_plot = plt.imshow(mask)
+    #plt.show()
+
+    mask = mask + 1
+    mask = mask / 2
+
+    # create 3 channel (RGB) mask
+    mask = torch.stack((mask, mask, mask))
+
+    res_image = tensor * mask
+
+    print(res_image)
+
+
+    # FINAL RESULT IMAGE
+    trans = transforms.ToPILImage()
+    image = trans(res_image)
+
+    img_plot = plt.imshow(image)
+    plt.show()
+
+    # image = ImageTk.PhotoImage(trans)
+
+    # img_canvas.delete("all")
+    # img_canvas.create_image(img1.width()/2, img1.height()/2, image=image)
+    print("hura")
 
     pass
 
@@ -194,8 +232,6 @@ def add_border(event):
     global img_canvas
     global borders
     global borders_rectangle
-
-    print(event.x, event.y)
 
     if len(borders) < 2:
         borders.append(Point(event.x, event.y))
