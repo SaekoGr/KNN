@@ -23,11 +23,11 @@ window.geometry("600x50")
 
 # MODEL -------
 m = IOGnet()
-path = "/home/adrian/skola/2sem/knn/proj/IOGnet_final_bn8.json"
-# path = "../model/IOGnet_final_bn7.json"
+# path = "/home/adrian/skola/2sem/knn/proj/IOGnet_final_bn8.json"
+path = "../model/IOGnet_final_bn7.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
-# m = m.eval()
+m = m.eval()
 # -------------
 
 
@@ -148,19 +148,26 @@ def do_segmentation():
 
     mask[y1:y2, x1:x2] = pred_y
 
-    red_mask = torch.where(mask == 0, 0.3, 1.3)
-
+    # red_mask = torch.where(mask == 0, 0.3, 1.0)
     mask = torch.where(mask == 0, 0.3, 1.0)
 
     # create 3 channel (RGB) mask
-    mask = torch.stack((red_mask, mask, mask))
+    mask = torch.stack((mask, mask, mask))
     res_image = tensor * mask
 
     # FINAL RESULT IMAGE
-    image = transI(res_image)
+    # img = res_image.permute(1,2,0).numpy()
+    # print(img.shape)
+    image = ImageTk.PhotoImage(image=transI(res_image))
+    # img_canvas.pack()
+    # img_canvas.delete("all")
+    img_canvas.create_image(0,0, anchor="nw", image=image)
+    window.mainloop()
 
-    plt.imshow(image)
-    plt.show()
+
+
+    # plt.imshow(image)
+    # plt.show()
 
 
 
@@ -169,7 +176,7 @@ def add_click(event):
     global points
     global points_circles
 
-    points_circles.append(img_canvas.create_oval(event.x-3, event.y-3, event.x+3, event.y+3, fill='blue', outline='red', width=2))
+    points_circles.append(img_canvas.create_oval(event.x-2, event.y-2, event.x+2, event.y+2, fill='blue', outline='red', width=1))
     points.append(Point(event.x, event.y))
 
 
