@@ -17,7 +17,7 @@ m = IOGnet()
 m.to(device)
 
 lr = 0.001
-batch_size = 12
+batch_size = 1
 min_res = 16
 optimizer = torch.optim.Adam(m.parameters(), lr=lr)
 loss_fce = F.binary_cross_entropy

@@ -4,14 +4,37 @@ from random import shuffle
 from torchvision import transforms
 import numpy as np
 from PIL import Image, ImageDraw
-from math import ceil
 from clicks import get_maps
 from copy import deepcopy
+import psutil
 
 
 
 trans = transforms.ToTensor()
 transI = transforms.ToPILImage()
+margin = 16
+margin_half = margin/2
+
+def determine_margins(l_p_max, r_p_max):
+  if l_p_max >= margin_half and r_p_max >= margin_half:
+    l_p, r_p = margin_half, margin_half
+  elif l_p_max < margin_half:
+    rest_margin = margin - l_p_max
+    if r_p_max >= rest_margin:
+      l_p, r_p = l_p_max, rest_margin
+    else:
+      l_p, r_p = 0, 0
+  elif r_p_max < margin_half:
+    rest_margin = margin - r_p_max
+    if l_p_max >= rest_margin:
+      l_p, r_p = rest_margin, r_p_max
+    else:
+      l_p, r_p = 0, 0
+  else:
+    l_p, r_p = 0, 0
+
+  return l_p, r_p
+  
 
 def generate_y(x, segmentation):
     # y = Image.fromarray(np.zeros((x.size), dtype="uint8"))
@@ -76,7 +99,8 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
   y_batch = []
   new_bboxes = []
   max_res_size = 64
-  margin = 15
+  margin = 16
+  margin_half = margin/2
   while True:
     shuffle(annotation)
     for img_obj in annotation:
@@ -86,8 +110,15 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
         continue
 
       # Get nearest bigger power of 2 of width and height
-      w = pow(2, ceil(np.log(img_obj["bbox"][2])/np.log(2)))
-      h = pow(2, ceil(np.log(img_obj["bbox"][3])/np.log(2)))
+      # w = pow(2, ceil(np.log(img_obj["bbox"][2])/np.log(2)))
+      # h = pow(2, ceil(np.log(img_obj["bbox"][3])/np.log(2)))
+      w = img_obj["bbox"][2] // 16
+      w_mod = img_obj["bbox"][2] % 16
+      w = (w+1)*16 if w_mod > 0 else w*16
+
+      h = img_obj["bbox"][3] // 16
+      h_mod = img_obj["bbox"][3] % 16
+      h = (h+1)*16 if h_mod > 0 else h*16
 
       w = w if w > min_res_size else min_res_size
       h = h if h > min_res_size else min_res_size
@@ -110,10 +141,8 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
           t_p_max = np.round(bbox[1])
           b_p_max = np.round(img_obj["height"] - (bbox[1] + bbox[3]))
 
-          l_p = l_p_max if l_p_max < margin else margin
-          r_p = r_p_max if r_p_max < margin else margin
-          t_p = t_p_max if t_p_max < margin else margin
-          b_p = b_p_max if b_p_max < margin else margin
+          l_p, r_p = determine_margins(l_p_max, r_p_max)
+          t_p, b_p = determine_margins(t_p_max, b_p_max)
 
           crop_coords = np.round((bbox[0] - l_p, bbox[1] - t_p, bbox[0] + bbox[2] + r_p, bbox[1] + bbox[3] + b_p))
           x = x.crop(crop_coords)
@@ -129,12 +158,12 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
           if cropped_size[0] > max_res_size:
             resize_size[0] = max_res_size
           else:
-            resize_size[0] = w if w < max_res_size else max_res_size
+            resize_size[0] = round(w) if w < max_res_size else max_res_size
 
           if cropped_size[1] > max_res_size:
             resize_size[1] = max_res_size
           else:
-            resize_size[1] = h if h < max_res_size else max_res_size
+            resize_size[1] = round(h) if h < max_res_size else max_res_size
 
           x = x.resize(resize_size)
           y = y.resize(resize_size)
@@ -150,17 +179,17 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
           new_bboxes.append(new_bbox)
 
           # Help "print"
-          # draw_x = ImageDraw.Draw(x)
-          # draw_x.rectangle(new_bbox, outline="red")
-          # x.show()
-          # y.show()
-          # print(img_obj["file_name"])
-          # print("category = ", img_obj["category_id"])
-          # print(x.size)
-          # input()
-          # for proc in psutil.process_iter():
-          #     if proc.name() == "display":
-          #         proc.kill()
+          draw_x = ImageDraw.Draw(x)
+          draw_x.rectangle(new_bbox, outline="red")
+          x.show()
+          y.show()
+          print(img_obj["file_name"])
+          print("category = ", img_obj["category_id"])
+          print(x.size)
+          input()
+          for proc in psutil.process_iter():
+              if proc.name() == "display":
+                  proc.kill()
 
         x_batch = torch.stack(x_batch)
         y_batch = torch.stack(y_batch)

@@ -27,7 +27,7 @@ m = IOGnet()
 path = "../model/IOGnet_final_bn7.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
-m = m.eval()
+# m = m.eval()
 # -------------
 
 
@@ -156,11 +156,7 @@ def do_segmentation():
     res_image = tensor * mask
 
     # FINAL RESULT IMAGE
-    # img = res_image.permute(1,2,0).numpy()
-    # print(img.shape)
     image = ImageTk.PhotoImage(image=transI(res_image))
-    # img_canvas.pack()
-    # img_canvas.delete("all")
     img_canvas.create_image(0,0, anchor="nw", image=image)
     window.mainloop()
 
