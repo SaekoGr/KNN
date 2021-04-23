@@ -23,8 +23,8 @@ window.geometry("600x50")
 
 # MODEL -------
 m = IOGnet()
-# path = "/home/adrian/skola/2sem/knn/proj/IOGnet_final_bn8.json"
-path = "../model/IOGnet_final_bn7.json"
+path = "/home/adrian/skola/2sem/knn/proj/IOGnet_final_bn8.json"
+# path = "../model/IOGnet_final_bn7.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
 # m = m.eval()
@@ -87,6 +87,8 @@ def do_segmentation():
     global img_opened
     global points
     global borders
+    global points_circles
+    global borders_rectangle
 
     img = img_opened.convert("RGB")
     trans = transforms.ToTensor()
@@ -157,13 +159,21 @@ def do_segmentation():
 
     # FINAL RESULT IMAGE
     image = ImageTk.PhotoImage(image=transI(res_image))
+<<<<<<< HEAD
+=======
+
+    # CREATE FINAL IMAGE
+>>>>>>> 768c61bc556d40a36433a6e9d8a1ebdd8f1ea774
     img_canvas.create_image(0,0, anchor="nw", image=image)
+
+    # redraw borders
+    img_canvas.tag_raise(borders_rectangle)
+    # redraw points
+    for point in points_circles:
+        img_canvas.tag_raise(point)
+
+
     window.mainloop()
-
-
-
-    # plt.imshow(image)
-    # plt.show()
 
 
 
