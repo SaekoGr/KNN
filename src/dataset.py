@@ -12,26 +12,20 @@ import psutil
 
 trans = transforms.ToTensor()
 transI = transforms.ToPILImage()
-margin = 16
+margin = 32
 margin_half = margin/2
 
 def determine_margins(l_p_max, r_p_max):
-  if l_p_max >= margin_half and r_p_max >= margin_half:
-    l_p, r_p = margin_half, margin_half
-  elif l_p_max < margin_half:
-    rest_margin = margin - l_p_max
-    if r_p_max >= rest_margin:
-      l_p, r_p = l_p_max, rest_margin
+  if l_p_max + r_p_max >= margin:
+    if r_p_max > l_p_max:
+      l_p = -l_p_max if l_p_max <= margin_half else -margin_half
+      r_p = margin - l_p
     else:
+      r_p = r_p_max if r_p_max <= margin_half else margin_half
+      l_p = -(margin - r_p)
+  
+  else: # There is not enough horizontal padding
       l_p, r_p = 0, 0
-  elif r_p_max < margin_half:
-    rest_margin = margin - r_p_max
-    if l_p_max >= rest_margin:
-      l_p, r_p = rest_margin, r_p_max
-    else:
-      l_p, r_p = 0, 0
-  else:
-    l_p, r_p = 0, 0
 
   return l_p, r_p
   
@@ -98,9 +92,7 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
   x_batch = []
   y_batch = []
   new_bboxes = []
-  max_res_size = 64
-  margin = 16
-  margin_half = margin/2
+  max_res_size = 224
   while True:
     shuffle(annotation)
     for img_obj in annotation:
@@ -109,48 +101,49 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
       if type(img_obj["segmentation"]) == dict or img_obj["bbox"][2] < 10 or img_obj["bbox"][3] < 10:
         continue
 
-      # Get nearest bigger power of 2 of width and height
-      # w = pow(2, ceil(np.log(img_obj["bbox"][2])/np.log(2)))
-      # h = pow(2, ceil(np.log(img_obj["bbox"][3])/np.log(2)))
-      w = img_obj["bbox"][2] // 16
-      w_mod = img_obj["bbox"][2] % 16
+      bbox = img_obj["bbox"]
+
+      w = bbox[2] // 16
+      w_mod = bbox[2] % 16
       w = (w+1)*16 if w_mod > 0 else w*16
 
-      h = img_obj["bbox"][3] // 16
-      h_mod = img_obj["bbox"][3] % 16
+      h = bbox[3] // 16
+      h_mod = bbox[3] % 16
       h = (h+1)*16 if h_mod > 0 else h*16
+
+      l_p_max = np.round(bbox[0])
+      r_p_max = np.round(img_obj["width"] - (bbox[0] + bbox[2]))
+      t_p_max = np.round(bbox[1])
+      b_p_max = np.round(img_obj["height"] - (bbox[1] + bbox[3]))
+
+      l_p, r_p = determine_margins(l_p_max, r_p_max)
+      t_p, b_p = determine_margins(t_p_max, b_p_max)
 
       w = w if w > min_res_size else min_res_size
       h = h if h > min_res_size else min_res_size
 
-      if (w,h) not in batch_pool:
-        batch_pool[(w,h)] = [img_obj]
-      else:
-        batch_pool[(w,h)].append(img_obj)
+      key = (w,h,l_p,r_p,t_p,b_p)
 
-      if len(batch_pool[(w,h)]) >= batch_size:
-        for img_obj in batch_pool[(w,h)]:
+      if key not in batch_pool:
+        batch_pool[key] = [img_obj]
+      else:
+        batch_pool[key].append(img_obj)
+
+      if len(batch_pool[key]) >= batch_size:
+        for img_obj in batch_pool[key]:
           bbox = np.array(img_obj["bbox"])
 
           x = Image.open(os.path.join(folder, img_obj["file_name"])).convert("RGB")
           segmentation = [list(np.round(polygon)) for polygon in img_obj["segmentation"]]
           y = generate_y(x, segmentation)
 
-          l_p_max = np.round(bbox[0])
-          r_p_max = np.round(img_obj["width"] - (bbox[0] + bbox[2]))
-          t_p_max = np.round(bbox[1])
-          b_p_max = np.round(img_obj["height"] - (bbox[1] + bbox[3]))
-
-          l_p, r_p = determine_margins(l_p_max, r_p_max)
-          t_p, b_p = determine_margins(t_p_max, b_p_max)
-
-          crop_coords = np.round((bbox[0] - l_p, bbox[1] - t_p, bbox[0] + bbox[2] + r_p, bbox[1] + bbox[3] + b_p))
+          crop_coords = np.round((bbox[0] + l_p, bbox[1] + t_p, bbox[0] + bbox[2] + r_p, bbox[1] + bbox[3] + b_p))
           x = x.crop(crop_coords)
           y = y.crop(crop_coords)
 
           cropped_size = list(x.size)
           resize_size = deepcopy(cropped_size)
-          new_bbox = [l_p, t_p, l_p + bbox[2], t_p + bbox[3]]
+          new_bbox = [-l_p, -t_p, -l_p + bbox[2], -t_p + bbox[3]]
 
           # print(bbox)
           # print(f"cropped size = {cropped_size}")
@@ -179,17 +172,17 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
           new_bboxes.append(new_bbox)
 
           # Help "print"
-          draw_x = ImageDraw.Draw(x)
-          draw_x.rectangle(new_bbox, outline="red")
-          x.show()
-          y.show()
-          print(img_obj["file_name"])
-          print("category = ", img_obj["category_id"])
-          print(x.size)
-          input()
-          for proc in psutil.process_iter():
-              if proc.name() == "display":
-                  proc.kill()
+          # draw_x = ImageDraw.Draw(x)
+          # draw_x.rectangle(new_bbox, outline="red")
+          # x.show()
+          # y.show()
+          # print(img_obj["file_name"])
+          # print("category = ", img_obj["category_id"])
+          # print(x.size)
+          # input()
+          # for proc in psutil.process_iter():
+          #     if proc.name() == "display":
+          #         proc.kill()
 
         x_batch = torch.stack(x_batch)
         y_batch = torch.stack(y_batch)
@@ -198,7 +191,7 @@ def batch_generator(batch_size, min_res_size, isTrain=True, CUDA=True):
           x_batch, y_batch = x_batch.cuda(), y_batch.cuda()
 
         yield x_batch, y_batch, new_bboxes
-        del batch_pool[(w,h)]
+        del batch_pool[key]
         x_batch, y_batch = [], []
         new_bboxes = []
 
@@ -210,7 +203,7 @@ def loading(i, margin):
 if __name__ == "__main__":
     batch_size = 5
     min_res_size = 16
-    gen = batch_generator(batch_size, min_res_size, False, False)
+    gen = batch_generator(batch_size, min_res_size, True, False)
     l = next(gen)
     print(l)
     for X, y, _, in gen:

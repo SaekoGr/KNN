@@ -1,11 +1,11 @@
-import numpy as np
 import torch
-from model import IOGnet
+from IOGnet_dp import IOGnet
+# from model import IOGnet
 from dataset import batch_generator
 from matplotlib import pyplot as plt
 
 m = IOGnet()
-path = "../model/IOGnet_final_bn7.json"
+path = "../model/IOGnet_dr3.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
 print(checkpoint["mean_loss"])
@@ -13,15 +13,15 @@ print(checkpoint["iou"])
 print(checkpoint["pixel_acc"])
 print(checkpoint["dice_coeff"])
 
-# m.eval()
+m.eval()
 # print(checkpoint["mean_loss"])
 g = batch_generator(1, 16,False, False)
 print("batch_n = ", next(g))
 
-_, axs = plt.subplots(5,6)
+_, axs = plt.subplots(5,8)
 
 for i in range(5):
-    for j in range(6):
+    for j in range(8):
         axs[i,j].axis("off")
 
 axs[0, 0].set_title('X')
@@ -29,7 +29,10 @@ axs[0, 1].set_title('bbox')
 axs[0, 2].set_title('clicks')
 axs[0, 3].set_title('y')
 axs[0, 4].set_title('pred_y')
-axs[0, 5].set_title('threshold')
+axs[0, 5].set_title('th 0.5')
+axs[0, 6].set_title('th 0.6')
+axs[0, 7].set_title('th 0.7')
+
 
 
 for i in range(5):
@@ -43,7 +46,9 @@ for i in range(5):
     clicks = X[0][4].squeeze()
     X = X[0][:3].permute(1,2,0)
     y = y[0].squeeze()
-    pred_y_th = (pred_y[0] > 0.5).float().squeeze()
+    pred_y_th_5 = (pred_y[0] > 0.5).float().squeeze()
+    pred_y_th_6 = (pred_y[0] > 0.6).float().squeeze()
+    pred_y_th_7 = (pred_y[0] > 0.7).float().squeeze()
     pred_y = pred_y[0].squeeze()
 
     print(i)
@@ -52,7 +57,10 @@ for i in range(5):
     axs[i, 2].imshow(clicks)
     axs[i, 3].imshow(y)
     axs[i, 4].imshow(pred_y)
-    axs[i, 5].imshow(pred_y_th)
+    axs[i, 5].imshow(pred_y_th_5)
+    axs[i, 6].imshow(pred_y_th_6)
+    axs[i, 7].imshow(pred_y_th_7)
+
 
 plt.tight_layout(pad=0.3, h_pad=0.3)
 plt.show()

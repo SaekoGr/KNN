@@ -35,8 +35,6 @@ for n in range(100):
   # First train model on dataset
   for i in range(batch_n):
     X, y, _ = next(g_train)
-    # print(X.shape)
-    optimizer.zero_grad()
 
     # Predict result
     y_pred = m(X)
@@ -55,6 +53,7 @@ for n in range(100):
   mean_epoch_losses.append(np.asarray(epoch_losses).mean())
 
   # evaluation
+  optimizer.zero_grad()
   pixel_acc, iou, dice_coeff = evaluate(n, m, batch_size=round(batch_size*1.5), min_res_size=16)
   accuracies.append(iou)
 

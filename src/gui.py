@@ -3,11 +3,11 @@ from tkinter.filedialog import askopenfilename
 from PIL import ImageTk,Image 
 from shapely.geometry import Point
 from torchvision import transforms
-import matplotlib.pyplot as plt
 import torch
 import numpy as np
-from model import IOGnet
-import matplotlib.pyplot as plt
+# from IOGnet_final_bn import IOGnet
+# from model import IOGnet
+from IOGnet_dp import IOGnet
 
 img_file_name = ""
 points = []
@@ -23,11 +23,13 @@ window.geometry("600x50")
 
 # MODEL -------
 m = IOGnet()
-path = "/home/adrian/skola/2sem/knn/proj/IOGnet_final_bn8.json"
+# path = "/home/adrian/skola/2sem/knn/proj/IOGnet_final_bn8.json"
+path = "../model/IOGnet_dr3.json"
 # path = "../model/IOGnet_final_bn7.json"
+
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
-# m = m.eval()
+m = m.eval()
 # -------------
 
 
@@ -123,16 +125,45 @@ def do_segmentation():
     border_map[y1:y2+1:, x1] = 1
     # right
     border_map[y1:y2+1, x2] = 1
+
     
+
     x_pad = (16 - ((x2-x1) % 16)) / 2
     y_pad = (16 - ((y2-y1) % 16)) / 2
 
-    # FIXME možný problém, pokud by už nebyli pixely na krajích
-    x1 -= int(np.floor(x_pad))
-    x2 += int(np.ceil(x_pad))
-    y1 -= int(np.floor(y_pad))
-    y2 += int(np.ceil(y_pad))
+    l_p_max = x1
+    r_p_max = img.size[0] - x2
+    t_p_max = y1
+    b_p_max = img.size[1] - y2
 
+    if l_p_max + r_p_max >= x_pad*2:
+        l_p = -l_p_max if l_p_max <= int(np.floor(x_pad)) else -int(np.floor(x_pad))
+        r_p = int(2*x_pad + l_p)
+    
+    else: # There is not enough horizontal padding
+        neg_pad = (16 - x_pad*2) / 2
+        l_p = int(np.floor(neg_pad))
+        r_p = -int(np.ceil(neg_pad))
+
+    
+    if t_p_max + b_p_max >= y_pad*2:
+        t_p = -t_p_max if t_p_max <= int(np.floor(y_pad)) else -int(np.floor(y_pad))
+        b_p = int(2*y_pad + t_p)
+    else: # There is not enough vertical padding
+        neg_pad = (16 - y_pad*2) / 2
+        t_p = int(np.floor(neg_pad))
+        b_p = -int(np.ceil(neg_pad))
+
+    x1 += l_p
+    x2 += r_p
+    y1 += t_p
+    y2 += b_p
+
+    # print(x_pad*2, y_pad*2)
+    # print(l_p_max, r_p_max)
+    # print(l_p, r_p)
+    # print(t_p_max, b_p_max)
+    # print(t_p, b_p)
 
     input = torch.unsqueeze(torch.vstack((tensor, border_map[None, :, : ], clicks_map[None, :, : ])), 0)
     input = input[:,:,y1:y2,x1:x2]
@@ -151,7 +182,7 @@ def do_segmentation():
     mask[y1:y2, x1:x2] = pred_y
 
     # red_mask = torch.where(mask == 0, 0.3, 1.0)
-    mask = torch.where(mask == 0, 0.3, 1.0)
+    mask = torch.where(mask == 0, 0.2, 1.0)
 
     # create 3 channel (RGB) mask
     mask = torch.stack((mask, mask, mask))
@@ -159,11 +190,8 @@ def do_segmentation():
 
     # FINAL RESULT IMAGE
     image = ImageTk.PhotoImage(image=transI(res_image))
-<<<<<<< HEAD
-=======
 
     # CREATE FINAL IMAGE
->>>>>>> 768c61bc556d40a36433a6e9d8a1ebdd8f1ea774
     img_canvas.create_image(0,0, anchor="nw", image=image)
 
     # redraw borders

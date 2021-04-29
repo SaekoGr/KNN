@@ -2,15 +2,16 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules.dropout import Dropout2d
 
 def create_conv_block(input, f1, f2, f3):
     layers = []
     layers.append(nn.Conv2d(input, f1, 1))
     layers.append(nn.Conv2d(f1, f2, 3, padding=1))
     layers.append(nn.Conv2d(f2, f3, 1))
-    layers.append(nn.BatchNorm2d(f3))
+    layers.append(nn.BatchNorm2d(f3, track_running_stats=False))
     layers.append(nn.Conv2d(input, f3, 1))
-    layers.append(nn.BatchNorm2d(f3))
+    layers.append(nn.BatchNorm2d(f3, track_running_stats=False))
     layers.append(nn.Conv2d(2*f3, f3, 3, padding=1))
 
     return nn.ModuleList(layers) 
@@ -34,28 +35,31 @@ def conv_block(x, layers, relu):
     return x
 
 def create_id_block(input, f1, f2, f3):
-    layers = []
-    layers.append(nn.Conv2d(input, f1, 1))
-    layers.append(nn.Conv2d(f1, f2, 3, padding=1))
-    layers.append(nn.Conv2d(f2, f3, 1))
-    layers.append(nn.BatchNorm2d(f3))
-    layers.append(nn.Conv2d(2*f3, f3, 3, padding=1))
+    layers = [
+        nn.Conv2d(input, f1, 1),
+        nn.Dropout2d(0.2),
+        nn.Conv2d(f1, f2, 3, padding=1),
+        nn.Conv2d(f2, f3, 1),
+        nn.BatchNorm2d(f3, track_running_stats=False),
+        nn.Conv2d(2*f3, f3, 3, padding=1),
+    ]
 
     return nn.ModuleList(layers)
 
 def id_block(x, layers, relu):
     x_shortcut = x
     x = relu(layers[0](x))
-    x = relu(layers[1](x))
-    x = layers[2](x)
+    x = layers[1](x)
+    x = relu(layers[2](x))
     x = layers[3](x)
+    x = layers[4](x)
     x = relu(
         torch.cat([
             x,
             x_shortcut
         ], 1)
     )
-    x = layers[4](x)
+    x = layers[5](x)
 
     return x
 
@@ -64,15 +68,16 @@ def create_decoder_block(x_sm_size, x_lg_size, upsamle):
     layers = [
         upsamle,
         nn.Conv2d(x_sm_size + x_lg_size, x_sm_size, 3, padding=1),
-        nn.BatchNorm2d(x_sm_size),
+        nn.BatchNorm2d(x_sm_size, track_running_stats=False),
 
         nn.Conv2d(x_sm_size, x_sm_size, 1),
+        nn.Dropout2d(0.15),
 
         nn.Conv2d(x_sm_size, x_sm_size//2, 3, padding=1),
-        nn.BatchNorm2d(x_sm_size//2),
+        nn.BatchNorm2d(x_sm_size//2, track_running_stats=False),
 
         nn.Conv2d(x_sm_size//2 + x_sm_size, x_sm_size//2, 3, padding=1),
-        nn.BatchNorm2d(x_sm_size//2),
+        nn.BatchNorm2d(x_sm_size//2, track_running_stats=False),
     ]
 
     return nn.ModuleList(layers)
@@ -84,9 +89,9 @@ def decoder_block(x_sm, x_lg, layers, relu):
     ))))
     x_lg = relu(layers[3](x_sm))
     x_lg = layers[4](x_lg)
-    x_lg = relu(layers[5](x_lg))
+    x_lg = relu(layers[6](layers[5](x_lg)))
 
-    x_sm = relu(layers[7](layers[6](torch.cat(
+    x_sm = relu(layers[8](layers[7](torch.cat(
         [x_sm, x_lg],
         1
     ))))
@@ -105,7 +110,7 @@ def create_finenet_block(upsamle_rates, input, f1, f2):
         layers.append(nn.Conv2d(input, f1, 3, padding=1))
         layers.append(nn.ReLU())
         layers.append(nn.Conv2d(f1, f2, 1))
-        layers.append(nn.BatchNorm2d(f2))
+        layers.append(nn.BatchNorm2d(f2, track_running_stats=False))
         layers.append(nn.ReLU())
     
     return nn.ModuleList(layers)
@@ -124,7 +129,8 @@ class IOGnet(nn.Module):
     def __init__(self):
         super(IOGnet, self).__init__()
         self.maxpool = nn.MaxPool2d((2,2))
-        self.avgpool = nn.AvgPool2d((2,2))
+        # self.avgpool = nn.AvgPool2d((2,2))
+
 
         self.upsample2 = nn.Upsample(scale_factor=(2,2), mode="bilinear", align_corners=True)
         self.upsample4 = nn.Upsample(scale_factor=(4,4), mode="bilinear", align_corners=True)
@@ -135,7 +141,7 @@ class IOGnet(nn.Module):
         # Stage 1 Encoder
         self.zero_pad = nn.ZeroPad2d((3, 3))
         self.coars_enc_conv_s1 = nn.Conv2d(5, 64, 7, padding=(3,3))
-        self.bn1 = nn.BatchNorm2d(64)
+        self.bn1 = nn.BatchNorm2d(64, track_running_stats=False)
 
         # Stage 2 Encoder
         # Conv_block
@@ -192,10 +198,9 @@ class IOGnet(nn.Module):
         self.fine_block5 = create_finenet_block([1], 64, 32, 32)
 
         self.final_conv1 = nn.Conv2d(544, 256, 3, padding=1)
-        self.final_bn1 = nn.BatchNorm2d(256)
+        self.final_bn1 = nn.BatchNorm2d(256, track_running_stats=False)
         self.final_conv2 = nn.Conv2d(256, 64, 3, padding=1)
-        self.final_conv3 = nn.Conv2d(256, 32, 3, padding=1)
-        self.final_conv4 = nn.Conv2d(64, 1, 1)
+        self.final_conv3 = nn.Conv2d(64, 1, 1)
 
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
@@ -267,8 +272,7 @@ class IOGnet(nn.Module):
 
         x0 = self.relu(self.final_bn1(x0))
         x0 = self.relu(self.final_conv2(x0))
-        # x0 = self.relu(self.final_conv3(x0))
-        x0 = self.sigmoid(self.final_conv4(x0))
+        x0 = self.sigmoid(self.final_conv3(x0))
         return x0
 
 
