@@ -1,4 +1,4 @@
-\documentclass [11pt, a4paper]{article}
+\documentclass [11pt, a4paper, twocolumn]{article}
 
 \usepackage[T1]{fontenc}
 \usepackage[slovak]{babel}
@@ -17,7 +17,7 @@
 \maketitle
 
 \section{Úvod}
-V posledných rokoch sa začali rapídne rozvíjať úlohy zamerané na segmentáciu obrazu. Tento typ úlohy má potenciál nájsť uplatnenie v samoriadiacich vozidlách, analýze medicínskych snímkov či vzdušných snímkov, alebo v editácii videí či fotiek. Zaujímavou podúlohou pre segmentáciu obrazu je práve interaktívna segmentácia obrazu. Cieľom všeobecnej segmentácie je identifikovať a vysegmentovať všetky objekty v obraze, zatiaľ čo interaktívna segmentácia sa zameriava na oddelenie jedného, užívateľom vybraného objektu \textit{(foreground)}, od všetkého ostatného v obraze \textit{(background)}.
+V posledných rokoch sa začali rapídne rozvíjať práce zamerané na segmentáciu obrazu. Tento typ úlohy má potenciál nájsť uplatnenie v rôznych odvetviach, menovito v samoriadiacich vozidlách, analýze medicínskych snímkov či vzdušných snímkov, alebo v editácii videí či fotiek, a mnohých iných. Zaujímavou podúlohou pre segmentáciu obrazu je práve interaktívna segmentácia obrazu. Cieľom všeobecnej segmentácie je identifikovať a vysegmentovať všetky objekty v obraze na základe príslušnej triedy, zatiaľ čo interaktívna segmentácia sa zameriava na oddelenie jedného, užívateľom vybraného objektu \textit{(foreground)}, od všetkého ostatného v obraze \textit{(background)}.
 
 Najčastejšie sa vstup od užívateľa prijíma v podobe \textit{bounding boxu} alebo \textit{kliknutia myšou}. Článok, TODO, ktorý ako prvý využíval techniky deep learningu využíval \textit{pozitívne klikutia} na miesta, kde sa objekt nachádza, a \textit{negatívne kliknutia} na miesta, kde sa objekt nenachádza. Článok, TODO, na základe ktorého je vytvorený aj tento projekt, využíva takzvané \textit{Inside-Outside Guidance}. Tento prístup kombinuje použitie bounding boxu a kliknutia myšou. Bounding box je vytvorený z dvoch kliknutí a jedno kliknutie je použité pre stred objektu, dokopy teda stačia tri kliknutia. Takýto prístup je veľmi výhodný, pretože značne redukuje veľkosť obrázku tým, že pre vstup do neurónovej siete je postačujúce vybrať iba boundig box s rezervou pár pixelov v každom smere, a nie celý obrázok. Prístup v tomto článku taktiež umožňuje spresnenie pomocou pridania kliknutí na objekt po segmentácii, ak užívateľ nie je dostatočne spokojný s pôvodným výsledkom.
 \end{document}
