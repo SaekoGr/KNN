@@ -65,6 +65,8 @@ Model pre túto úlohu je založený na dvoch podsieťach: \textit{CoarseNet} a 
 
 \textit{FineNet} je použitá na upsamplovanie medzivrstiev \textit{CoarseNetu}, ktoré sú následne skonkatenované a tvoria výstupný obrázok. Jej cieľom je obnoviť chýbajúce detaily, ako napríklad hranice objektu. \textit{FineNet} taktiež využíva ReLU na všetkých vrstvách okrem poslednej, kde je kvôli tresholdovaniu použitá sigmoida.
 
+Pri trénovaní bol použitý learning rate s hodnotou $0.001$, optimalizátorom \textit{Adam} a chybová funkcia pre binárnu cross-entropiu.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{results}
