@@ -1,3 +1,4 @@
+\RequirePackage[hyphens]{url}
 \documentclass [11pt, a4paper, twocolumn]{article}
 
 \usepackage[slovak]{babel}
@@ -7,8 +8,10 @@
 \usepackage{graphicx}
 \usepackage[center]{caption}
 \usepackage{float}
+\usepackage{enumitem}
 \usepackage[left=1.5cm, text={18cm, 25cm}, top = 2.5cm]{geometry}
 \setlength{\parskip}{0em}
+\setlist[itemize]{noitemsep, topsep=0pt}
 
 \begin{document}
 
@@ -37,28 +40,46 @@ Náš tím si zvolil prístup \textit{Inside-Outside Guidance} (dalej iba IoG) \
 Pri trénovaní siete nie je reálné, aby bol vstup získaný od skutočného užívateľa, ale musí byť náhodne vzorkovaný. Toto je implementované výberom bounding boxu z anotácie obrázku, ku ktorému je pripočítaný náhodný šum, aby vstup vyzeral ako od skutočného užívateľa. Kliknutie vo vnútri objektu je náhodne vygenerované vo vnútri objektu, s paddingom od okraja bounding boxu. Najväčšou výhodou tohto prístupu je schopnosť generalizovať aj iný typ predtým nevidených obrázkov bez potreby finetunovania.  
 
 \section{Dataset}
-Momentálne existujú mnohé dostupné datasety určené pre segmentáciu obrazu, ktoré sa dajú adaptovať aj na interaktívnu segmentáciu. Medzi najčastešie používané patrí \textit{Pascal}, \textit{Grabcut}, \textit{Berkley} alebo \textit{MS Coco}; a sú najčastejšie používané pre validáciu a porovnanie presnosti dnešných state-of-the-art systémov.
+Momentálne existujú mnohé dostupné datasety určené pre segmentáciu obrazu, ktoré sa dajú adaptovať aj na interaktívnu segmentáciu. Medzi najčastešie používané patrí \textit{Pascal}, \textit{Grabcut}, \textit{Berkley} alebo \textit{MS Coco}; a sú najčastejšie používané pre validáciu a porovnanie presnosti medzi dnešnými state-of-the-art systémami.
 
-Pre náš projekt sme sa rozhodli použiť dataset \textit{MS Coco} pre evaluáciu aj trénovanie, pretože obsahuje cez $80$ objektov vo viac ako $200000$ obrázkoch, ktoré zachytávajú bežné momenty zo života.
+Pre náš projekt sme sa rozhodli použiť dataset \textit{MS Coco} pre evaluáciu aj trénovanie, pretože obsahuje cez 80 objektov vo viac ako 200 000 obrázkoch, ktoré zachytávajú bežné objekty zo života.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{coco}
-\caption{Ukážka obrázkov z datasetu \textit{MS Coco}. Prevzaté z \cite{coco}.}
+\caption{Ukážka obrázkov z datasetu \textit{MS Coco}. \\Prevzaté z \cite{coco}.}
 \end{figure}
 
 \section{Model}
 
-Model pre túto úlohu je založený na dvoch podsieťach: \textit{CoarseNet} a \textit{FineNet}. \textit{CoarseNet} 
+Model pre túto úlohu je založený na dvoch podsieťach: \textit{CoarseNet} a \textit{FineNet}. Takáto architektúra bola pôvodne navrhnutá pre odhadnutie pózy človeka v obrázku. 
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{architecture}
-\caption{Ukážka konceptu architektúry pre túto úlohu. Prevzaté z \cite{zhang_liew_wei_wei_zhao_2020}.}
+\caption{Ukážka konceptu architektúry pre tento typ úlohy. Prevzaté z \cite{zhang_liew_wei_wei_zhao_2020}.}
 \end{figure}
 
 
+\textit{CoarseNet} má v našom prípade upravenú architektúru veľmi podobnú \textit{Resnet-50}, usporiadanej do pyramídovej štruktúry. Takáto sieť postupne aplikuje konvolúcie na vstupný batch obrázkov, na najhlbšej vrstve môže pridať \textit{refinement heatmapu} pre globálny kontext. Následne na najhlbšej vrstve aplikuje dekonvolúciu, až kým sa nedostane na pôvodnú veľkosť batchu obrázku. Ako aktivačná funkcia pre všetky vrstvy je použitá ReLU.
+
+\textit{FineNet} je použitá na upsamplovanie medzivrstiev \textit{CoarseNetu}, ktoré sú následne skonkatenované a tvoria výstupný obrázok. Jej cieľom je obnoviť chýbajúce detaily, ako napríklad hranice objektu. \textit{FineNet} taktiež využíva ReLU na všetkých vrstvách okrem poslednej, kde je kvôli tresholdovaniu použitá sigmoida.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{results}
+\caption{Ukážka výsledkov z natrénovaného modelu. Zľava: originálny obrázok, použitý bounding box, použité kliknutia, očakávaná segmentácia objektu, predikcia modelu bez thresholdovania, predikcia modelu s thresholdovaním}
+\end{figure}
 
 \section{Evaluácia}
+Po každej epoche trénovania bol model evaluovaný na základe 3 metrík (\cite{tiu_2020}):
+
+\begin{itemize}
+\item \textit{Pixel accuracy} - porovnáva, či sa jednotlivé pixely rovnajú; avšak táto metrika môže byť zavádzajúca, ak sú triedy na obrázku v nerovnováhe
+\item \textit{Intersection over union (IoU)} - metrika, ktorá delí prienik očakávaného obrázku a predikcie modelu s ich zjednotením; najčastejšie používaná metrika pre porovnanie systémov
+\item \textit{Dice coefficient} - metrika, ktorá používa dvojnásobok prieniku očakávaného obrázku a predikcie modelu podelený plochou oboch obrázkov v pixeloch 
+\end{itemize}
+Experimentálne boli implementované všetky 3 metriky, avšak pre výber najlepšieho modelu bola použitá metrika IoU, keďže väčšina systémov používa práve túto metriku pre prezentáciu výsledkov.
 
 \section{Praktická aplikácia a GUI}
 
