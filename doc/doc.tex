@@ -116,8 +116,6 @@ Nasledujúca ukážka prezentuje zobár vstupných obrázkov v RGB, vybraný bou
 
 Vrámci projektu bolo implementované jednoduché užívateľské rozhranie v jazyku \texttt{Python} pomocou modulu \texttt{tkinter}. Toto rozhranie umožňuje priamu interakciu skutočného užívateľa s obrázkom. Užívateľ si vyberie ľubovolný obrázok zo svojho pevného disku, pravým tlačítkom myši môže užívateľ umiestniť bounding box. Keďže sa môže na obrázku nachádzať iba jeden bounding box, po opätovnom kliknutí pravého tlačítka sa začne kresliť nový bounding box. Ľavým tlačítkom sa umiestňujú kliknutia vo vnútri objektu a užívateľ môže urobiť ľubovolne veľa kliknutí. Spravidla je segmentácia s väčším množstvom kliknutí presnejšia, najmä pri objektoch s nerovnomerným tvarom. Ak užívateľ urobil chybu v kliknutiach, môže ich zmazať tlačítkom \texttt{Reset Clicks}. Po zadaní užívateľského vstupu stačí stlačiť tlačidlo \texttt{Segment} a počkať na výsledok.
 
-Na hardvéri s horším CPU je to rádovo pár sekúnd, pri veľmi veľkom obrázku to môže byť až niekoľko desiatok sekúnd. Ak počítač obsahuje aj GPU, tak je výpočet značne rýchlejší a trvá pár milisekúnd až sekúnd.
-
 \begin{figure}[H]
 \centering
 \begin{minipage}[H]{0.75\linewidth}
