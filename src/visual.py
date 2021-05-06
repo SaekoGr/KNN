@@ -5,7 +5,7 @@ from dataset import batch_generator
 from matplotlib import pyplot as plt
 
 m = IOGnet()
-path = "../model/IOGnet_dr3.json"
+path = "../model/IOGnet_dr20.json"
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
 m.load_state_dict(checkpoint['model_state_dict'])
 print(checkpoint["mean_loss"])
@@ -29,9 +29,9 @@ axs[0, 1].set_title('bbox')
 axs[0, 2].set_title('clicks')
 axs[0, 3].set_title('y')
 axs[0, 4].set_title('pred_y')
-axs[0, 5].set_title('th 0.5')
-axs[0, 6].set_title('th 0.6')
-axs[0, 7].set_title('th 0.7')
+axs[0, 5].set_title('th 0.4')
+axs[0, 6].set_title('th 0.5')
+axs[0, 7].set_title('th 0.6')
 
 
 
@@ -46,9 +46,9 @@ for i in range(5):
     clicks = X[0][4].squeeze()
     X = X[0][:3].permute(1,2,0)
     y = y[0].squeeze()
-    pred_y_th_5 = (pred_y[0] > 0.5).float().squeeze()
-    pred_y_th_6 = (pred_y[0] > 0.6).float().squeeze()
-    pred_y_th_7 = (pred_y[0] > 0.7).float().squeeze()
+    pred_y_th_5 = (pred_y[0] > 0.4).float().squeeze()
+    pred_y_th_6 = (pred_y[0] > 0.5).float().squeeze()
+    pred_y_th_7 = (pred_y[0] > 0.6).float().squeeze()
     pred_y = pred_y[0].squeeze()
 
     print(i)

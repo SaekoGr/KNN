@@ -24,7 +24,7 @@ window.geometry("600x50")
 # MODEL -------
 m = IOGnet()
 # path = "/home/adrian/skola/2sem/knn/proj/IOGnet_final_bn8.json"
-path = "../model/IOGnet_dr3.json"
+path = "../model/IOGnet_dr14.json"
 # path = "../model/IOGnet_final_bn7.json"
 
 checkpoint = torch.load(path, map_location=torch.device('cpu'))
@@ -127,9 +127,9 @@ def do_segmentation():
     border_map[y1:y2+1, x2] = 1
 
     
-
-    x_pad = (16 - ((x2-x1) % 16)) / 2
-    y_pad = (16 - ((y2-y1) % 16)) / 2
+    margin = 32
+    x_pad = (margin - ((x2-x1) % margin)) / 2
+    y_pad = (margin - ((y2-y1) % margin)) / 2
 
     l_p_max = x1
     r_p_max = img.size[0] - x2
@@ -141,7 +141,7 @@ def do_segmentation():
         r_p = int(2*x_pad + l_p)
     
     else: # There is not enough horizontal padding
-        neg_pad = (16 - x_pad*2) / 2
+        neg_pad = (margin - x_pad*2) / 2
         l_p = int(np.floor(neg_pad))
         r_p = -int(np.ceil(neg_pad))
 
@@ -150,7 +150,7 @@ def do_segmentation():
         t_p = -t_p_max if t_p_max <= int(np.floor(y_pad)) else -int(np.floor(y_pad))
         b_p = int(2*y_pad + t_p)
     else: # There is not enough vertical padding
-        neg_pad = (16 - y_pad*2) / 2
+        neg_pad = (margin - y_pad*2) / 2
         t_p = int(np.floor(neg_pad))
         b_p = -int(np.ceil(neg_pad))
 
@@ -171,7 +171,7 @@ def do_segmentation():
     with torch.no_grad():
         y_pred = m(input)
     # Threshold
-    y_pred = (y_pred>0.5).float()
+    y_pred = (y_pred>0.6).float()
 
     # create mask
     mask = torch.zeros_like(tensor[0])

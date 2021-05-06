@@ -3,6 +3,7 @@ import torch
 import random
 from shapely.geometry import Point
 import numpy as np
+from torch.functional import norm
 
 
 def check_siluet_borders(siluet, x, y, size_dec_x, size_dec_y):
@@ -40,8 +41,8 @@ def generate_clicks(siluet, bbox, other_clicks_num):
     clicks_points = []
     clicks_map = torch.zeros_like(siluet)
 
-    bbox_dec_size_x = int((bbox[2] - bbox[0]) * 0.2) 
-    bbox_dec_size_y = int((bbox[3] - bbox[1]) * 0.2) 
+    bbox_dec_size_x = int((bbox[2] - bbox[0]) * 0.3)
+    bbox_dec_size_y = int((bbox[3] - bbox[1]) * 0.3)
 
     # generate clicks with MonteCarlo method
     for _ in range(100):
@@ -66,13 +67,12 @@ def generate_b_map(siluet, bbox):
     border_map = torch.zeros_like(siluet)
     
     bx1, by1, bx2, by2 = bbox
-
     # add noise
-    n1, n2, n3, n4 = [random.randint(0, 20) for x in range(4)]
-    x1 = int(bx1 - n1 if bx1 - n1 > 0 else 0)
-    y1 = int(by1 - n2 if by1 - n2 > 0 else 0)
-    x2 = int(bx2 + n3 if bx2 + n3 < siluet.shape[2] else siluet.shape[2]-1)
-    y2 = int(by2 + n4 if by2 + n4 < siluet.shape[1] else siluet.shape[1]-1) 
+    r1, r2, r3, r4 = np.round(np.random.normal(7, 2, 4))
+    x1 = int(bx1 - r1 if bx1 - r1 > 0 else np.random.randint(0, bx1+1))
+    y1 = int(by1 - r2 if by1 - r2 > 0 else np.random.randint(0, by1+1))
+    x2 = int(bx2 + r3 if bx2 + r3 < siluet.shape[2] else np.random.randint(bx2-1, siluet.shape[2]))
+    y2 = int(by2 + r4 if by2 + r4 < siluet.shape[1] else np.random.randint(by2-1, siluet.shape[1])) 
 
     # top
     border_map[0, y1, x1:x2+1:] = 1
