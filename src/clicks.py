@@ -31,7 +31,7 @@ def check_siluet_borders(siluet, x, y, size_dec_x, size_dec_y):
 
     checked_pixels_cnt = 2*size_dec_x + 2*size_dec_y
 
-    return torch.divide(valid_pixels_cnt, checked_pixels_cnt) > 0.95
+    return (valid_pixels_cnt / checked_pixels_cnt) > 0.95
 
 
 
@@ -68,7 +68,7 @@ def generate_b_map(siluet, bbox):
     
     bx1, by1, bx2, by2 = bbox
     # add noise
-    r1, r2, r3, r4 = np.round(np.random.normal(7, 2, 4))
+    r1, r2, r3, r4 = np.round(np.random.normal(5, 2, 4))
     x1 = int(bx1 - r1 if bx1 - r1 > 0 else np.random.randint(0, bx1+1))
     y1 = int(by1 - r2 if by1 - r2 > 0 else np.random.randint(0, by1+1))
     x2 = int(bx2 + r3 if bx2 + r3 < siluet.shape[2] else np.random.randint(bx2-1, siluet.shape[2]))
